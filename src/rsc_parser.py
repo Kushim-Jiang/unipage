@@ -1,3 +1,4 @@
+import code
 from copy import deepcopy
 from json import load
 from os.path import basename
@@ -83,6 +84,14 @@ def _show_rs(rs: str) -> (str | None):
         return char_rs + "　" + rs
     else:
         return None
+
+
+def _parse_char(s: str) -> int:
+    if s.startswith("("):
+        # 强制要求行后附有码位
+        return int(s[:-1].split(" - ")[-1], 16)
+    else:
+        return int(s, 16)
 
 
 class UniException(Exception):
@@ -198,7 +207,8 @@ class Parser:
             while line.lower() != '# eof':
                 if line and line[0] == '#':
                     inf_type = line[1:].strip()
-                    inf_cont = {}
+                    set_cont = {}
+                    lst_cont = []
 
                     if inf_type not in ["RS", "NL"]:
                         raise ValueError
@@ -207,8 +217,10 @@ class Parser:
                     while 1:
                         if line and line[0] == '#':
                             tmp_dict = dict()
-                            tmp_dict["inf_cont"] = inf_cont
-
+                            if set_cont:
+                                tmp_dict["inf_cont"] = set_cont
+                            else:
+                                tmp_dict["inf_cont"] = lst_cont
                             cpy_dict = deepcopy(tmp_dict)
                             cnt.append(cpy_dict)
                             break
@@ -224,10 +236,87 @@ class Parser:
                                     if _show_rs(rs_value) == None:
                                         bug.append([1, "J004", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
                                     _, _ = rs_value.strip().split(".")
-                                inf_cont.update({str(rs_cp): rs_values})
+                                set_cont.update({str(rs_cp): rs_values})
                             elif inf_type == "NL":
-                                # TODO: NamesList
-                                None
+                                name_line: str = line.strip()
+                                if name_line.startswith("@"):
+                                    # SUBTITLE
+                                    if name_line.startswith("@@@+"):
+                                        lst_cont.append(["SUBTITLE", name_line.split("\t")[-1]])
+                                    # MIXED_SUBHEADER (not used)
+                                    elif name_line.startswith("@@@~"):
+                                        if name_line == "@@@~":
+                                            lst_cont.append(["MIXED_SUBHEADER", ""])
+                                        else:
+                                            lst_cont.append(["MIXED_SUBHEADER", name_line.split("\t")[-1]])
+                                    # TITLE
+                                    elif name_line.startswith("@@@"):
+                                        lst_cont.append(["TITLE", name_line.split("\t")[-1]])
+                                    # INDEX_TAB
+                                    elif name_line.startswith("@@+"):
+                                        pass
+                                    # ALTGLYPH_SUBHEADER (not used)
+                                    elif name_line.startswith("@@~"):
+                                        if name_line == "@@~":
+                                            lst_cont.append(["ALTGLYPH_SUBHEADER", ""])
+                                        else:
+                                            lst_cont.append(["ALTGLYPH_SUBHEADER", name_line.split("\t")[-1]])
+                                    # BLOCKHEADER
+                                    elif name_line.startswith("@@"):
+                                        block_init, block_name, block_fina = name_line.split("\t")[1:]
+                                        # => ["BLOCKHEADER", ["Latin Extended-A", "0100", "017F"]]
+                                        lst_cont.append(["BLOCKHEADER", [block_name, block_init, block_fina]])
+                                    # NOTICE_LINE
+                                    elif name_line.startswith("@+"):
+                                        if name_line.startswith("@+\t*"):
+                                            # "*" => "•"
+                                            lst_cont.append(["NOTICE_LINE (bullet)", name_line.split("\t")[-1][2:]])
+                                        else:
+                                            lst_cont.append(["NOTICE_LINE", name_line.split("\t")[-1]])
+                                    # VARIATION_SUBHEADER (not used)
+                                    elif name_line.startswith("@~"):
+                                        if name_line == "@~":
+                                            lst_cont.append(["VARIATION_SUBHEADER", ""])
+                                        else:
+                                            lst_cont.append(["VARIATION_SUBHEADER", name_line.split("\t")[-1]])
+                                    # SUBHEADER
+                                    else:
+                                        lst_cont.append(["SUBHEADER", name_line.split("\t")[-1]])
+                                elif name_line.startswith("\t"):
+                                    # CROSS_REF
+                                    if name_line.startswith("\t\tx"):
+                                        # "x" => "→"
+                                        lst_cont.append(["CROSS_REF (notice)", _parse_char(name_line.split("x ")[-1])])
+                                    elif name_line.startswith("\tx"):
+                                        # "x" => "→"
+                                        lst_cont.append(["CROSS_REF", _parse_char(name_line.split("x ")[-1])])
+                                    # ALIAS_LINE
+                                    elif name_line.startswith("\t="):
+                                        # "=" => "="
+                                        lst_cont.append(["ALIAS_LINE", name_line.split("= ")[-1]])
+                                    # FORMALALIAS_LINE
+                                    elif name_line.startswith("\t%"):
+                                        # "#" => "※"
+                                        lst_cont.append(["FORMALALIAS_LINE", name_line.split("% ")[-1]])
+                                    # VARIATION_LINE
+                                    elif name_line.startswith("\t~"):
+                                        # "~" => "~"
+                                        lst_cont.append(["VARIATION_LINE", name_line.split("~ ")[-1]])
+                                    # IGNORED_LINE
+                                    elif name_line.startswith("\t;"):
+                                        pass
+                                elif name_line.startswith(";"):
+                                    # SIDEBAR_LINE
+                                    if name_line.startswith(";;"):
+                                        lst_cont.append(["SIDEBAR_LINE", name_line.split(";; ")[-1]])
+                                else:
+                                    codepoint, name = name_line.strip().split("\t")[0], name_line.strip().split("\t")[-1]
+                                    # RESERVED_LINE
+                                    if name == "<reserved>":
+                                        lst_cont.append(["RESERVED_LINE", [codepoint, name]])
+                                    # NAME_LINE
+                                    else:
+                                        lst_cont.append(["NAME_LINE", [codepoint, name]])
                             line = fp.readline().strip()
                         else:
                             line = fp.readline().strip()

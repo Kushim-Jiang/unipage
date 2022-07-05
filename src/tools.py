@@ -203,8 +203,8 @@ def _build_block(blk: dict, flag: bool):
         temp_blk = blk
 
     top_item = QTreeWidgetItem()
-    top_item.setText(0, temp_blk["blk_name"])
-    top_item.setText(1, "[" + str(temp_blk["blk_initcp"]) + " (" + hex(temp_blk["blk_initcp"]).upper().replace("0X", "") + "), " + str(temp_blk["blk_finacp"]) + " (" + hex(temp_blk["blk_finacp"]).upper().replace("0X", "") + ")]")
+    top_item.setText(
+        1, temp_blk["blk_name"] + " [" + str(temp_blk["blk_initcp"]) + " (" + hex(temp_blk["blk_initcp"]).upper().replace("0X", "") + "), " + str(temp_blk["blk_finacp"]) + " (" + hex(temp_blk["blk_finacp"]).upper().replace("0X", "") + ")]")
     Current.unipage.ui.tree_out.addTopLevelItem(top_item)
 
     if flag == False:
@@ -278,7 +278,7 @@ def _build_setting(blk: dict, flag: bool):
         temp_blk = blk
 
     top_item = QTreeWidgetItem()
-    top_item.setText(0, temp_blk["blk_name"])
+    top_item.setText(1, temp_blk["blk_name"])
     Current.unipage.ui.tree_set.addTopLevelItem(top_item)
 
     # 无选项信息
@@ -293,6 +293,9 @@ def _build_setting(blk: dict, flag: bool):
             temp_blk["blk_cont"]["font"] = [[0, _font(0)] for _ in range(12)]
         elif temp_blk["blk_type"] == "V":
             temp_blk["blk_cont"]["format"] = 2
+            temp_blk["blk_cont"]["font"] = [0, _font(0)]
+        elif temp_blk["blk_type"] == "C":
+            temp_blk["blk_cont"]["format"] = 0
             temp_blk["blk_cont"]["font"] = [0, _font(0)]
 
     child_item = QTreeWidgetItem()
@@ -343,7 +346,7 @@ def _build_setting(blk: dict, flag: bool):
 def previous_option(item: QTreeWidgetItem, flag: bool):
     if item.text(0)[-2:] == "字库":
         for set in Current.project.prj_set_info:
-            if set["blk_name"] == item.parent().parent().text(0):
+            if set["blk_name"] == item.parent().parent().text(1):
                 if set["blk_type"] != "V":
                     if flag == False:
                         set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] = (set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] - 1) % (len(Current.project.prj_rsc_info["fnt"]) + 1)
@@ -360,7 +363,7 @@ def previous_option(item: QTreeWidgetItem, flag: bool):
                     item.setText(1, "◁　" + set["blk_cont"]["font"][1] + "　▷")
     else:
         for set in Current.project.prj_set_info:
-            if set["blk_name"] == item.parent().text(0):
+            if set["blk_name"] == item.parent().text(1):
                 if flag == False:
                     set["blk_cont"][["print", "column", "format"][item.parent().indexOfChild(item)]] = (set["blk_cont"][["print", "column", "format"][item.parent().indexOfChild(item)]] - 1) % [2, 4, 3][item.parent().indexOfChild(item)]
                 else:
@@ -370,9 +373,9 @@ def previous_option(item: QTreeWidgetItem, flag: bool):
 
 def colour_option(item: QTreeWidgetItem, colour: str):
     for block_set in Current.project.prj_set_info:
-        if block_set["blk_name"] == item.parent().text(0):
+        if block_set["blk_name"] == item.parent().text(1):
             for block_itidx in range(Current.unipage.ui.tree_set.topLevelItemCount()):
-                if Current.unipage.ui.tree_set.topLevelItem(block_itidx).text(0) == block_set["blk_name"]:
+                if Current.unipage.ui.tree_set.topLevelItem(block_itidx).text(1) == block_set["blk_name"]:
                     if int(item.text(0).split(" ")[0]) in block_set["blk_cont"][colour]:
                         block_set["blk_cont"][colour].remove(int(item.text(0).split(" ")[0]))
                     else:
@@ -382,7 +385,7 @@ def colour_option(item: QTreeWidgetItem, colour: str):
 def show_options():
     for block_set in Current.project.prj_set_info:
         for block_itidx in range(Current.unipage.ui.tree_set.topLevelItemCount()):
-            if Current.unipage.ui.tree_set.topLevelItem(block_itidx).text(0) == block_set["blk_name"]:
+            if Current.unipage.ui.tree_set.topLevelItem(block_itidx).text(1) == block_set["blk_name"]:
                 block_set["blk_cont"]["yellow"].sort()
                 for item_index in range(Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).childCount() - 1, -1, -1):
                     Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).removeChild(Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).child(item_index))

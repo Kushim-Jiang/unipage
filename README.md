@@ -1,20 +1,20 @@
 # Unipage
 
-#### 介绍
+#### Description
 
-用于打印 Code Charts 的应用。
-
-
-<!-- #### 软件架构
+A software to print code charts.
 
 
-#### 安装教程
+<!-- #### Software Architecture
+Software architecture description
+
+#### Installation
 
 1.  xxxx
 2.  xxxx
 3.  xxxx
 
-#### 使用说明
+#### Instructions
 
 1.  xxxx
 2.  xxxx

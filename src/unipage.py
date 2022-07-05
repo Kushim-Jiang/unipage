@@ -201,11 +201,11 @@ class Unipage():
             for set in [set for set in Current.project.prj_set_info if set["blk_cont"]["print"] == 1]:
                 proof_dic, proof_bugs = printer.make_proof(set["blk_name"])
                 for index_top in range(Current.unipage.ui.tree_set.topLevelItemCount()):
-                    if Current.unipage.ui.tree_set.topLevelItem(index_top).text(0) == set["blk_name"]:
+                    if Current.unipage.ui.tree_set.topLevelItem(index_top).text(1) == set["blk_name"]:
                         if [i for i in proof_bugs if i[0] == 0]:
-                            Current.unipage.ui.tree_set.topLevelItem(index_top).setText(1, "检查未通过")
+                            Current.unipage.ui.tree_set.topLevelItem(index_top).setText(0, "检查未通过")
                         else:
-                            Current.unipage.ui.tree_set.topLevelItem(index_top).setText(1, "检查通过")
+                            Current.unipage.ui.tree_set.topLevelItem(index_top).setText(0, "检查通过")
                             Current.proofs.append(proof_dic)
                 tools.show_bugs(proof_bugs)
             if Current.proofs:
