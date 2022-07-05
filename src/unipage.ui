@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>unipage</class>
+ <widget class="QMainWindow" name="unipage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1083</width>
+    <height>873</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <family>思源黑体 CN Regular</family>
+    <pointsize>11</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Unipage</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTreeWidget" name="tree_out">
+      <property name="font">
+       <font>
+        <family>思源黑体</family>
+        <pointsize>11</pointsize>
+       </font>
+      </property>
+      <property name="sizeAdjustPolicy">
+       <enum>QAbstractScrollArea::AdjustToContents</enum>
+      </property>
+      <column>
+       <property name="text">
+        <string>项目</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>信息</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="bar">
+      <property name="font">
+       <font>
+        <family>思源黑体</family>
+        <pointsize>11</pointsize>
+       </font>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
+      <property name="textVisible">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1083</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="defaultUp">
+    <bool>false</bool>
+   </property>
+   <widget class="QMenu" name="menu">
+    <property name="font">
+     <font>
+      <family>思源黑体 CN Regular</family>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="title">
+     <string>文件</string>
+    </property>
+    <addaction name="act_create"/>
+    <addaction name="act_open"/>
+    <addaction name="act_save"/>
+    <addaction name="act_close"/>
+   </widget>
+   <widget class="QMenu" name="menu_2">
+    <property name="font">
+     <font>
+      <family>思源黑体 CN Regular</family>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="title">
+     <string>资源</string>
+    </property>
+    <addaction name="act_imprsc"/>
+    <addaction name="act_delrsc"/>
+    <addaction name="separator"/>
+    <addaction name="act_parsc"/>
+   </widget>
+   <widget class="QMenu" name="menu_3">
+    <property name="font">
+     <font>
+      <family>思源黑体 CN Regular</family>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="title">
+     <string>选项</string>
+    </property>
+    <addaction name="act_prev"/>
+    <addaction name="act_next"/>
+    <addaction name="act_yellow"/>
+    <addaction name="act_blue"/>
+   </widget>
+   <widget class="QMenu" name="menu_4">
+    <property name="font">
+     <font>
+      <family>思源黑体 CN Regular</family>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="title">
+     <string>打印</string>
+    </property>
+    <addaction name="act_check"/>
+    <addaction name="act_print"/>
+   </widget>
+   <addaction name="menu"/>
+   <addaction name="menu_2"/>
+   <addaction name="menu_3"/>
+   <addaction name="menu_4"/>
+  </widget>
+  <widget class="QToolBar" name="tools">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="act_create"/>
+   <addaction name="act_open"/>
+   <addaction name="act_save"/>
+   <addaction name="act_close"/>
+   <addaction name="separator"/>
+   <addaction name="act_imprsc"/>
+   <addaction name="act_delrsc"/>
+   <addaction name="act_parsc"/>
+   <addaction name="separator"/>
+   <addaction name="act_prev"/>
+   <addaction name="act_next"/>
+   <addaction name="act_blue"/>
+   <addaction name="act_yellow"/>
+   <addaction name="separator"/>
+   <addaction name="act_check"/>
+   <addaction name="act_print"/>
+  </widget>
+  <widget class="QDockWidget" name="dock_resource">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="contextMenuPolicy">
+    <enum>Qt::DefaultContextMenu</enum>
+   </property>
+   <property name="acceptDrops">
+    <bool>true</bool>
+   </property>
+   <property name="windowIcon">
+    <iconset>
+     <normaloff>src/images/tree.png</normaloff>src/images/tree.png</iconset>
+   </property>
+   <property name="windowTitle">
+    <string>资源信息</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="widget_resource">
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QTreeWidget" name="tree_file">
+       <property name="font">
+        <font>
+         <family>思源黑体</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="sizeAdjustPolicy">
+        <enum>QAbstractScrollArea::AdjustIgnored</enum>
+       </property>
+       <property name="editTriggers">
+        <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::ExtendedSelection</enum>
+       </property>
+       <property name="uniformRowHeights">
+        <bool>true</bool>
+       </property>
+       <property name="animated">
+        <bool>false</bool>
+       </property>
+       <column>
+        <property name="text">
+         <string>资源名</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>资源状态</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>资源位置</string>
+        </property>
+       </column>
+       <item>
+        <property name="text">
+         <string>项目文件</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="flags">
+         <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>块文件</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="flags">
+         <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>字库文件</string>
+        </property>
+        <property name="background">
+         <brush brushstyle="NoBrush">
+          <color alpha="255">
+           <red>0</red>
+           <green>0</green>
+           <blue>0</blue>
+          </color>
+         </brush>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="flags">
+         <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>属性文件</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="flags">
+         <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsDropEnabled|ItemIsEnabled</set>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dock_bug">
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="windowIcon">
+    <iconset>
+     <normaloff>src/images/tree.png</normaloff>src/images/tree.png</iconset>
+   </property>
+   <property name="windowTitle">
+    <string>编译信息</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="widget_bug">
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <widget class="QTabWidget" name="tab">
+       <property name="font">
+        <font>
+         <family>思源黑体</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="tab_err">
+        <attribute name="title">
+         <string>错误 [0]</string>
+        </attribute>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <widget class="QTreeWidget" name="tree_err">
+           <property name="font">
+            <font>
+             <family>思源黑体</family>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <column>
+            <property name="text">
+             <string>代码</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>详细信息</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>相关行</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="tab_war">
+        <attribute name="title">
+         <string>警告 [0]</string>
+        </attribute>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QTreeWidget" name="tree_war">
+           <column>
+            <property name="text">
+             <string>代码</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>详细信息</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>相关行</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="tab_inf">
+        <attribute name="title">
+         <string>信息 [0]</string>
+        </attribute>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QTreeWidget" name="tree_inf">
+           <column>
+            <property name="text">
+             <string>代码</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>详细信息</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>相关行</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dock_setting">
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="windowIcon">
+    <iconset>
+     <normaloff>src/images/tree.png</normaloff>src/images/tree.png</iconset>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::AllDockWidgetAreas</set>
+   </property>
+   <property name="windowTitle">
+    <string>选项信息</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="widget_setting">
+    <layout class="QHBoxLayout" name="horizontalLayout_7">
+     <item>
+      <widget class="QTreeWidget" name="tree_set">
+       <property name="font">
+        <font>
+         <family>思源黑体</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="sizeAdjustPolicy">
+        <enum>QAbstractScrollArea::AdjustIgnored</enum>
+       </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::ExtendedSelection</enum>
+       </property>
+       <column>
+        <property name="text">
+         <string>选项名</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>选择</string>
+        </property>
+       </column>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <action name="act_create">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/create.png</normaloff>src/images/create.png</iconset>
+   </property>
+   <property name="text">
+    <string>新建项目</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="act_open">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/open.png</normaloff>src/images/open.png</iconset>
+   </property>
+   <property name="text">
+    <string>打开项目</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="act_save">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/pause.png</normaloff>src/images/pause.png</iconset>
+   </property>
+   <property name="text">
+    <string>保存项目</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="act_imprsc">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/block.png</normaloff>src/images/block.png</iconset>
+   </property>
+   <property name="text">
+    <string>导入资源</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="act_delrsc">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/delete.png</normaloff>src/images/delete.png</iconset>
+   </property>
+   <property name="text">
+    <string>移除选中资源</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Del</string>
+   </property>
+  </action>
+  <action name="act_parsc">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/parse.png</normaloff>src/images/parse.png</iconset>
+   </property>
+   <property name="text">
+    <string>解析资源</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
+   </property>
+  </action>
+  <action name="act_yellow">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/yellow.png</normaloff>src/images/yellow.png</iconset>
+   </property>
+   <property name="text">
+    <string>标黄</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Y</string>
+   </property>
+  </action>
+  <action name="act_blue">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/blue.png</normaloff>src/images/blue.png</iconset>
+   </property>
+   <property name="text">
+    <string>标蓝</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>B</string>
+   </property>
+  </action>
+  <action name="act_prev">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/previous.png</normaloff>src/images/previous.png</iconset>
+   </property>
+   <property name="text">
+    <string>上一项</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Left</string>
+   </property>
+  </action>
+  <action name="act_next">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/next.png</normaloff>src/images/next.png</iconset>
+   </property>
+   <property name="text">
+    <string>下一项</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Right</string>
+   </property>
+  </action>
+  <action name="act_check">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/check.png</normaloff>src/images/check.png</iconset>
+   </property>
+   <property name="text">
+    <string>印前检查</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="act_print">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/print.png</normaloff>src/images/print.png</iconset>
+   </property>
+   <property name="text">
+    <string>打印</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="act_close">
+   <property name="icon">
+    <iconset>
+     <normaloff>src/images/close.png</normaloff>src/images/close.png</iconset>
+   </property>
+   <property name="text">
+    <string>关闭项目</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>思源黑体</family>
+     <pointsize>11</pointsize>
+    </font>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+W</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

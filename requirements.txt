@@ -1,0 +1,5 @@
+fonttools==4.33.3
+PySide2==5.15.2.1
+numpy==1.22.3
+reportlab==3.6.9
+svglib==1.2.1
