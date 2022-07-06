@@ -86,12 +86,12 @@ def _show_rs(rs: str) -> (str | None):
         return None
 
 
-def _parse_char(s: str) -> int:
+def _parse_char(s: str) -> str:
     if s.startswith("("):
-        # 强制要求行后附有码位
-        return int(s[:-1].split(" - ")[-1], 16)
+        #
+        return s[:-1].split(" - ")[-1].upper()
     else:
-        return int(s, 16)
+        return s.upper()
 
 
 class UniException(Exception):
@@ -107,7 +107,7 @@ class Parser:
         bug = []
         try:
             fp = open(url, 'r', encoding='utf-8')
-            line = fp.readline().strip()
+            line: str = fp.readline().strip()
 
             while line.lower() != '# eof':
                 if line and line[0] == '#':
@@ -143,10 +143,16 @@ class Parser:
                             break
                         elif line:
                             if blk_type == "C":
-                                # 111E1 \t SINHALA ARCHAIC DIGIT ONE => "70113": ["SINHALA ARCHAIC DIGIT ONE"]
-                                chr_cp, chr_name = line.strip().split("\t")
-                                chr_cp = int(chr_cp.strip(), 16)
-                                blk_cont.update({str(chr_cp): (chr_name.upper())})
+                                # 111E1 \t SINHALA ARCHAIC DIGIT ONE \t U+E675 => "70113": [None, 58997, "SINHALA ARCHAIC DIGIT ONE"]
+                                # 111E1 \t SINHALA ARCHAIC DIGIT ONE => "70113": [None, 70113, "SINHALA ARCHAIC DIGIT ONE"]
+                                if len(line.strip().split("\t")) == 3:
+                                    chr_cp, chr_name, chr_pua = line.strip().split("\t")
+                                    chr_cp, chr_pua = int(chr_cp.strip(), 16), int(chr_pua.strip(), 16)
+                                    blk_cont.update({str(chr_cp): [None, chr_pua, chr_name.upper()]})
+                                elif len(line.strip().split("\t")) == 2:
+                                    chr_cp, chr_name = line.strip().split("\t")
+                                    chr_cp = int(chr_cp.strip(), 16)
+                                    blk_cont.update({str(chr_cp): [None, chr_cp, chr_name.upper()]})
                             elif blk_type == "W":
                                 # 00001 \t GHZ-74352.12 \t U+E675 => "1　131072　G": [None, 58997, "GHZ-74352.12"]
                                 # 00001 \t GHZ-74352.12 => "1　131072　G": [None, None, "GHZ-74352.12"]
@@ -202,7 +208,7 @@ class Parser:
         bug = []
         try:
             fp = open(url, 'r', encoding='utf-8')
-            line = fp.readline().strip()
+            line: str = fp.readline().strip()
 
             while line.lower() != '# eof':
                 if line and line[0] == '#':
@@ -313,10 +319,10 @@ class Parser:
                                     codepoint, name = name_line.strip().split("\t")[0], name_line.strip().split("\t")[-1]
                                     # RESERVED_LINE
                                     if name == "<reserved>":
-                                        lst_cont.append(["RESERVED_LINE", [codepoint, name]])
+                                        lst_cont.append(["RESERVED_LINE", [codepoint.upper(), name]])
                                     # NAME_LINE
                                     else:
-                                        lst_cont.append(["NAME_LINE", [codepoint, name]])
+                                        lst_cont.append(["NAME_LINE", [codepoint.upper(), name.upper()]])
                             line = fp.readline().strip()
                         else:
                             line = fp.readline().strip()

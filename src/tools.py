@@ -238,12 +238,37 @@ def _build_block(blk: dict, flag: bool):
                     temp_blk["blk_cont"][chr_cp].append([chr_slt] + item[1] + [chr_set])
             for key in temp_blk["blk_cont"].keys():
                 temp_blk["blk_cont"][key].sort()
-
-    for item in temp_blk["blk_cont"].items():
-        child_item = QTreeWidgetItem()
-        child_item.setText(0, str(int(item[0])) + " (" + hex(int(item[0])).upper().replace("0X", "") + ")")
-        child_item.setText(1, _wash_out(str(item[1])))
-        top_item.addChild(child_item)
+        elif temp_blk["blk_type"] == "C":
+            # get information from blk file
+            temp_blk["blk_cont"] = blk["blk_cont"]
+            # get information from att file, "names_list": [...]
+            arr_nl = []
+            flag_nl = 0
+            for att_file in Current.project.prj_rsc_info["att"]:
+                if att_file[3][0]["inf_cont"]:
+                    for line in att_file[3][0]["inf_cont"]:
+                        if line[0] == "BLOCKHEADER" and line[1][0] == blk["blk_name"]:
+                            flag_nl = 1
+                        elif line[0] == "BLOCKHEADER" and line[1][0] != blk["blk_name"]:
+                            flag_nl = 0
+                        if flag_nl == 1:
+                            arr_nl.append(line)
+            temp_blk["blk_cont"]["names_list"] = arr_nl
+    if temp_blk["blk_type"] != "C":
+        for item in temp_blk["blk_cont"].items():
+            child_item = QTreeWidgetItem()
+            child_item.setText(0, str(int(item[0])) + " (" + hex(int(item[0])).upper().replace("0X", "") + ")")
+            child_item.setText(1, _wash_out(str(item[1])))
+            top_item.addChild(child_item)
+    else:
+        for line in temp_blk["blk_cont"]["names_list"]:
+            child_item = QTreeWidgetItem()
+            child_item.setText(0, line[0])
+            if line[0] == "NAME_LINE":
+                child_item.setText(1, _wash_out(str(temp_blk["blk_cont"][str(int(line[1][0], 16))])))
+            else:
+                child_item.setText(1, _wash_out(str(line[1])))
+            top_item.addChild(child_item)
     Current.unipage.ui.tree_out.expandAll()
 
     if flag == False:
