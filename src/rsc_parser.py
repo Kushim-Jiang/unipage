@@ -308,6 +308,10 @@ class Parser:
                                     elif name_line.startswith("\t~"):
                                         # "~" => "~"
                                         lst_cont.append(["VARIATION_LINE", name_line.split("~ ")[-1]])
+                                    # DECOMPOSITION
+                                    elif name_line.startswith("\t:"):
+                                        # ":" => "≡"
+                                        lst_cont.append(["DECOMPOSITION", name_line.split(": ")[-1]])
                                     # IGNORED_LINE
                                     elif name_line.startswith("\t;"):
                                         pass

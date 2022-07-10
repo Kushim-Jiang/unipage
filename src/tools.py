@@ -312,6 +312,7 @@ def _build_setting(blk: dict, flag: bool):
         temp_blk["blk_cont"]["column"] = 0
         temp_blk["blk_cont"]["yellow"] = []
         temp_blk["blk_cont"]["blue"] = []
+        temp_blk["blk_cont"]["title"] = 0
 
         if temp_blk["blk_type"] in ["H", "W"]:
             temp_blk["blk_cont"]["format"] = 0
@@ -324,9 +325,10 @@ def _build_setting(blk: dict, flag: bool):
             temp_blk["blk_cont"]["font"] = [0, _font(0)]
 
     child_item = QTreeWidgetItem()
-    child_item.setText(0, "是否打印")
+    child_item.setText(0, "打印本块")
     child_item.setText(1, "◁　" + _yes_no(temp_blk["blk_cont"]["print"]) + "　▷")
     top_item.addChild(child_item)
+    
     child_item = QTreeWidgetItem()
     child_item.setText(0, "栏位")
     child_item.setText(1, "◁　" + _column(temp_blk["blk_cont"]["column"]) + "　▷")
@@ -334,9 +336,15 @@ def _build_setting(blk: dict, flag: bool):
         child_item.setText(1, "◁　2 栏，每栏 4 形　▷")
         child_item.setDisabled(True)
     top_item.addChild(child_item)
+    
     child_item = QTreeWidgetItem()
     child_item.setText(0, "首页版式")
     child_item.setText(1, "◁　" + _format(temp_blk["blk_cont"]["format"]) + "　▷")
+    top_item.addChild(child_item)
+    
+    child_item = QTreeWidgetItem()
+    child_item.setText(0, "打印扉页")
+    child_item.setText(1, "◁　" + _yes_no(temp_blk["blk_cont"]["title"]) + "　▷")
     top_item.addChild(child_item)
 
     # TODO
@@ -361,6 +369,11 @@ def _build_setting(blk: dict, flag: bool):
         child_item.setText(0, "IVD 字库")
         child_item.setText(1, "◁　" + temp_blk["blk_cont"]["font"][1] + "　▷")
         font_item.addChild(child_item)
+    elif temp_blk["blk_type"] == "C":
+        child_item = QTreeWidgetItem()
+        child_item.setText(0, "字库")
+        child_item.setText(1, "◁　" + temp_blk["blk_cont"]["font"][1] + "　▷")
+        font_item.addChild(child_item)
     Current.unipage.ui.tree_set.expandAll()
 
     if flag == False:
@@ -372,7 +385,7 @@ def previous_option(item: QTreeWidgetItem, flag: bool):
     if item.text(0)[-2:] == "字库":
         for set in Current.project.prj_set_info:
             if set["blk_name"] == item.parent().parent().text(1):
-                if set["blk_type"] != "V":
+                if set["blk_type"] not in ["V", "C"]:
                     if flag == False:
                         set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] = (set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] - 1) % (len(Current.project.prj_rsc_info["fnt"]) + 1)
                     else:
@@ -390,10 +403,10 @@ def previous_option(item: QTreeWidgetItem, flag: bool):
         for set in Current.project.prj_set_info:
             if set["blk_name"] == item.parent().text(1):
                 if flag == False:
-                    set["blk_cont"][["print", "column", "format"][item.parent().indexOfChild(item)]] = (set["blk_cont"][["print", "column", "format"][item.parent().indexOfChild(item)]] - 1) % [2, 4, 3][item.parent().indexOfChild(item)]
+                    set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] = (set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] - 1) % [2, 4, 3, 2][item.parent().indexOfChild(item)]
                 else:
-                    set["blk_cont"][["print", "column", "format"][item.parent().indexOfChild(item)]] = (set["blk_cont"][["print", "column", "format"][item.parent().indexOfChild(item)]] + 1) % [2, 4, 3][item.parent().indexOfChild(item)]
-                item.setText(1, "◁　" + [_yes_no, _column, _format][item.parent().indexOfChild(item)](set["blk_cont"][["print", "column", "format"][item.parent().indexOfChild(item)]]) + "　▷")
+                    set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] = (set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] + 1) % [2, 4, 3, 2][item.parent().indexOfChild(item)]
+                item.setText(1, "◁　" + [_yes_no, _column, _format, _yes_no][item.parent().indexOfChild(item)](set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]]) + "　▷")
 
 
 def colour_option(item: QTreeWidgetItem, colour: str):

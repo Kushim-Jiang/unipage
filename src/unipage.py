@@ -166,10 +166,10 @@ class Unipage():
                     for index_child in range(Current.unipage.ui.tree_set.topLevelItem(index_top).childCount()):
                         items.add(Current.unipage.ui.tree_set.topLevelItem(index_top).child(index_child))
             for index_top in range(Current.unipage.ui.tree_set.topLevelItemCount()):
-                if Current.unipage.ui.tree_set.topLevelItem(index_top).child(5) in items:
-                    items.remove(Current.unipage.ui.tree_set.topLevelItem(index_top).child(5))
-                    for index_child in range(Current.unipage.ui.tree_set.topLevelItem(index_top).child(5).childCount()):
-                        items.add(Current.unipage.ui.tree_set.topLevelItem(index_top).child(5).child(index_child))
+                if Current.unipage.ui.tree_set.topLevelItem(index_top).child(6) in items:
+                    items.remove(Current.unipage.ui.tree_set.topLevelItem(index_top).child(6))
+                    for index_child in range(Current.unipage.ui.tree_set.topLevelItem(index_top).child(6).childCount()):
+                        items.add(Current.unipage.ui.tree_set.topLevelItem(index_top).child(6).child(index_child))
             items = {it for it in items if it.text(0)[0] != "标"}
             for item in items:
                 tools.previous_option(item, flag)

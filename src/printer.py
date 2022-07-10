@@ -122,38 +122,39 @@ def make_pdf(proof: dict):
     # ==================================
     # ========  draw first page ========
     # ==================================
-    first_page = [[proof["blk_name"], 80, 80, 11, "Noto Sans Black"], ["Range: " + hex(proof["blk_initcp"]).upper().replace("0X", "") + " – " + hex(proof["blk_finacp"]).upper().replace("0X", ""), 0, 13, 9, "Noto Sans Black"],
-                  ["This file contains the codepoints, the reference glyphs and the other information of characters in", 0, 20, 9, "Noto Sans Light"]]
-    if proof["char_count"] != 24:
-        first_page.append(["the blocks.", 0, 11, 9, "Noto Sans Light"])
-    else:
-        first_page.append(["the database.", 0, 11, 9, "Noto Sans Light"])
-    first_page += [["Disclaimer", 0, 23, 9, "Noto Sans Black"], ["These charts are intended to show the distribution of the codespace and partial information of the", 0, 13, 9, "Noto Sans Light"],
-                   ["characters only, and do not indicate the character set model and exact understanding of each", 0, 11, 9, "Noto Sans Light"],
-                   ["character for the scripts involved. For a complete understanding of the use of the characters", 0, 11, 9, "Noto Sans Light"],
-                   ["contained in this file, please consult the specification, the technical notes, the annexes", 0, 11, 9, "Noto Sans Light"], ["or the proposals associated.", 0, 11, 9, "Noto Sans Light"]]
-    first_page += [["Fonts", 0, 23, 9, "Noto Sans Black"], ["The shapes of the reference glyphs used in these code charts are not prescriptive. Considerable", 0, 13, 9, "Noto Sans Light"],
-                   ["variation is to be expected in actual fonts. The particular fonts used in these charts are shown below:", 0, 11, 9, "Noto Sans Light"], ["", 30, 8, 9, "Noto Sans Light"]]
-    for font in font_set:
-        first_page += [[ttLib.TTFont(font[1])["name"].getBestFullName(), -15, 11, 9, "Noto Sans Regular"],
-                       [ttLib.TTFont(font[1])["name"].names[5].toBytes().decode(ttLib.TTFont(font[1])["name"].names[5].getEncoding()), 15, 11, 9, "Noto Sans Light"]]
-    first_page += [["", -30, 3, 9, "Noto Sans Light"]]
-    first_page += [["Terms of Use", 0, 23, 9, "Noto Sans Black"], ["The code charts are compiled and printed by Unibook software, which does not retain copyright on", 0, 13, 9, "Noto Sans Light"],
-                   ["the production process. The fonts and font data used in production of these code charts may NOT be", 0, 11, 9, "Noto Sans Light"],
-                   ["extracted, or used in any other way in any product or publication, without permission or license", 0, 11, 9, "Noto Sans Light"], ["granted by the typeface owner(s).", 0, 11, 9, "Noto Sans Light"]]
+    if proof["page_title"]:
+        first_page = [[proof["blk_name"], 80, 80, 11, "Noto Sans Black"], ["Range: " + hex(proof["blk_initcp"]).upper().replace("0X", "") + " – " + hex(proof["blk_finacp"]).upper().replace("0X", ""), 0, 13, 9, "Noto Sans Black"],
+                      ["This file contains the codepoints, the reference glyphs and the other information of characters in", 0, 20, 9, "Noto Sans Light"]]
+        if proof["char_count"] != 24:
+            first_page.append(["the blocks.", 0, 11, 9, "Noto Sans Light"])
+        else:
+            first_page.append(["the database.", 0, 11, 9, "Noto Sans Light"])
+        first_page += [["Disclaimer", 0, 23, 9, "Noto Sans Black"], ["These charts are intended to show the distribution of the codespace and partial information of the", 0, 13, 9, "Noto Sans Light"],
+                       ["characters only, and do not indicate the character set model and exact understanding of each", 0, 11, 9, "Noto Sans Light"],
+                       ["character for the scripts involved. For a complete understanding of the use of the characters", 0, 11, 9, "Noto Sans Light"],
+                       ["contained in this file, please consult the specification, the technical notes, the annexes", 0, 11, 9, "Noto Sans Light"], ["or the proposals associated.", 0, 11, 9, "Noto Sans Light"]]
+        first_page += [["Fonts", 0, 23, 9, "Noto Sans Black"], ["The shapes of the reference glyphs used in these code charts are not prescriptive. Considerable", 0, 13, 9, "Noto Sans Light"],
+                       ["variation is to be expected in actual fonts. The particular fonts used in these charts are shown below:", 0, 11, 9, "Noto Sans Light"], ["", 30, 8, 9, "Noto Sans Light"]]
+        for font in font_set:
+            first_page += [[ttLib.TTFont(font[1])["name"].getBestFullName(), -15, 11, 9, "Noto Sans Regular"],
+                           [ttLib.TTFont(font[1])["name"].names[5].toBytes().decode(ttLib.TTFont(font[1])["name"].names[5].getEncoding()), 15, 11, 9, "Noto Sans Light"]]
+        first_page += [["", -30, 3, 9, "Noto Sans Light"]]
+        first_page += [["Terms of Use", 0, 23, 9, "Noto Sans Black"], ["The code charts are compiled and printed by Unibook software, which does not retain copyright on", 0, 13, 9, "Noto Sans Light"],
+                       ["the production process. The fonts and font data used in production of these code charts may NOT be", 0, 11, 9, "Noto Sans Light"],
+                       ["extracted, or used in any other way in any product or publication, without permission or license", 0, 11, 9, "Noto Sans Light"], ["granted by the typeface owner(s).", 0, 11, 9, "Noto Sans Light"]]
 
-    writer = (0, 0)
-    for line in first_page:
-        writer = (writer[0] + line[1], writer[1] + line[2])
-        dw.add(shapes.String(writer[0], 792 - writer[1], line[0], textAnchor='start', fillColor='black', fontName=line[4], fontSize=line[3]))
+        writer = (0, 0)
+        for line in first_page:
+            writer = (writer[0] + line[1], writer[1] + line[2])
+            dw.add(shapes.String(writer[0], 792 - writer[1], line[0], textAnchor='start', fillColor='black', fontName=line[4], fontSize=line[3]))
 
-    try:
-        renderPDF.draw(dw, cv, 0, 0, showBoundary=False)
-    except Exception as _:
-        pass
+        try:
+            renderPDF.draw(dw, cv, 0, 0, showBoundary=False)
+        except Exception as _:
+            pass
 
-    dw = shapes.Drawing(612, 792)
-    cv.showPage()
+        dw = shapes.Drawing(612, 792)
+        cv.showPage()
 
     # ===================================
     # ========  draw code charts ========
@@ -402,143 +403,154 @@ def make_proof(name: str):
         blk_info = [info for info in Current.project.prj_blk_info if info["blk_name"] == name][0]
         blk_type = blk_info["blk_type"]
 
-        if blk_type in ["H", "W"]:
-            c_count = [40, 60, 80, 100][blk_set["blk_cont"]["column"]]
-            g_count = [240, 180, 160, 100][blk_set["blk_cont"]["column"]]
-        elif blk_type == "V":
-            c_count = 24
-            g_count = 96
+        if blk_type != "C":
+            if blk_type in ["H", "W"]:
+                c_count = [40, 60, 80, 100][blk_set["blk_cont"]["column"]]
+                g_count = [240, 180, 160, 100][blk_set["blk_cont"]["column"]]
+            elif blk_type == "V":
+                c_count = 24
+                g_count = 96
 
-        c_index = 0
-        # 0: 增页, 1: 本列满, 2: 都没满, 3: 本页满
-        flag = 2
-        print_pages = []
+            c_index = 0
+            # 0: 增页, 1: 本列满, 2: 都没满, 3: 本页满
+            flag = 2
+            print_pages = []
 
-        list_cp = ["" for _ in range(c_count)]
-        list_rs = ["" for _ in range(c_count)]
-        list_gl = ["" for _ in range(g_count)]
-        list_sr = ["" for _ in range(g_count)]
-        list_ft = ["" for _ in range(g_count)]
+            list_cp = ["" for _ in range(c_count)]
+            list_rs = ["" for _ in range(c_count)]
+            list_gl = ["" for _ in range(g_count)]
+            list_sr = ["" for _ in range(g_count)]
+            list_ft = ["" for _ in range(g_count)]
 
-        cps = [int(key) for key in blk_info["blk_cont"].keys()]
-        cps.append(cps[-1])
-        # cp_count = len(cps)
-        cps.sort(reverse=True)
-        cp_count = len(cps)
+            cps = [int(key) for key in blk_info["blk_cont"].keys()]
+            cps.append(cps[-1])
+            # cp_count = len(cps)
+            cps.sort(reverse=True)
+            cp_count = len(cps)
 
-        while len(cps):
-            cp = str(cps.pop())
-            if blk_type != "V":
-                cp_subsrc = {}
-                for it in blk_info["blk_cont"][cp][1]:
-                    if it != None:
-                        cp_subsrc[_subsrc_no(it[-1])] = it
-
-            Current.unipage.ui.bar.setValue(int(20 * (cp_count - len(cps)) / cp_count))
-
-            line_one = 0
-            line_two = 0
-            if c_count == 40:
-                line_one = int(0 in cp_subsrc or 1 in cp_subsrc or 3 in cp_subsrc or 4 in cp_subsrc or 6 in cp_subsrc or 7 in cp_subsrc)
-                line_two = int(2 in cp_subsrc or 5 in cp_subsrc or 8 in cp_subsrc or 9 in cp_subsrc or 10 in cp_subsrc or 11 in cp_subsrc)
-                line_use = line_one + line_two
-            elif c_count == 24:
-                line_use = int(ceil(round(sum([int(bool(i)) for i in blk_info["blk_cont"][cp]]) / g_count * c_count, 2)))
-            else:
-                line_use = int(ceil(round(sum([int(bool(i)) for i in blk_info["blk_cont"][cp][1]]) / g_count * c_count, 2)))
-
-            if c_count != 24:
-                if divmod(c_index + line_use - 1, c_count)[-1] < c_index or c_index > c_count:
-                    flag = 0
-                elif divmod(divmod(c_index, 20)[-1] + line_use - 1, 20)[-1] < divmod(c_index, 20)[-1]:
-                    flag = 1
-                elif len(cps):
-                    flag = 2
-                else:
-                    flag = 3
-            else:
-                if divmod(c_index + line_use - 1, c_count)[-1] < c_index or c_index > c_count:
-                    flag = 0
-                elif divmod(divmod(c_index, 12)[-1] + line_use - 1, 12)[-1] < divmod(c_index, 12)[-1]:
-                    flag = 1
-                elif len(cps):
-                    flag = 2
-                else:
-                    flag = 3
-
-            if flag == 0:
-                min_cp = _extreme_cp(list_cp, "min")
-                max_cp = _extreme_cp(list_cp, "max")
-                print_pages.append([list_cp, list_rs, list_gl, list_sr, list_ft, min_cp, max_cp])
-                list_cp = ["" for _ in range(c_count)]
-                list_rs = ["" for _ in range(c_count)]
-                list_gl = ["" for _ in range(g_count)]
-                list_sr = ["" for _ in range(g_count)]
-                list_ft = ["" for _ in range(g_count)]
-                c_index = 0
-                cps.append(cp)
-            elif flag == 1:
-                if blk_type == "V":
-                    c_index = 12 * ceil(c_index / 12)
-                else:
-                    c_index = 20 * ceil(c_index / 20)
-                cps.append(cp)
-            elif flag == 2:
-                list_cp[c_index] = hex(int(cp)).upper().replace("0X", "")
+            while len(cps):
+                cp = str(cps.pop())
                 if blk_type != "V":
-                    list_rs[c_index] = blk_info["blk_cont"][cp][0]
-                    if list_rs[c_index] is None:
-                        raise UniException([0, "C002", name, cp + " (" + hex(int(cp)).upper().replace("0X", "") + ") 缺少对应的 RS。"])
+                    cp_subsrc = {}
+                    for it in blk_info["blk_cont"][cp][1]:
+                        if it != None:
+                            cp_subsrc[_subsrc_no(it[-1])] = it
+
+                Current.unipage.ui.bar.setValue(int(20 * (cp_count - len(cps)) / cp_count))
+
+                line_one = 0
+                line_two = 0
                 if c_count == 40:
-                    if line_one == 1 and line_two == 0:
-                        subsrc_list = [0, 1, 3, 6, 4, 7]
-                    elif line_one == 0 and line_two == 1:
-                        subsrc_list = [2, 10, 9, 11, 5, 8]
-                    elif line_one == 1 and line_two == 1:
-                        subsrc_list = [0, 1, 3, 6, 4, 7, 2, 10, 9, 11, 5, 8]
-                    for i in range(len(subsrc_list)):
-                        if subsrc_list[i] in cp_subsrc.keys():
-                            temp_fnt, temp_gly, temp_src = cp_subsrc[subsrc_list[i]]
-                            inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][subsrc_list[i]][1])), _get_glyph((temp_gly, int(cp)), blk_type), temp_src
-                            if inpt_fnt == (None, None):
-                                raise UniException([0, "C007", name, _subsrc_name(subsrc_list[i]) + " 源"])
-                            list_gl[round(c_index * g_count / c_count) + i] = inpt_gly
-                            list_sr[round(c_index * g_count / c_count) + i] = inpt_src
-                            list_ft[round(c_index * g_count / c_count) + i] = inpt_fnt
+                    line_one = int(0 in cp_subsrc or 1 in cp_subsrc or 3 in cp_subsrc or 4 in cp_subsrc or 6 in cp_subsrc or 7 in cp_subsrc)
+                    line_two = int(2 in cp_subsrc or 5 in cp_subsrc or 8 in cp_subsrc or 9 in cp_subsrc or 10 in cp_subsrc or 11 in cp_subsrc)
+                    line_use = line_one + line_two
                 elif c_count == 24:
-                    g_info = []
-                    for it in blk_info["blk_cont"][cp]:
-                        temp_fnt, temp_gly, temp_src = it[1], it[2], [it[3], it[4]]
-                        inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][1])), _get_glyph((it[0], int(cp)), blk_type), temp_src
-                        if inpt_fnt == (None, None):
-                            raise UniException([0, "C007", name, "IVD"])
-                        g_info.append([inpt_gly, inpt_src, inpt_fnt])
-                    for i in range(0, round(line_use * g_count / c_count)):
-                        if i < len(g_info):
-                            list_gl[round(c_index * g_count / c_count + i)] = g_info[i][0]
-                            list_sr[round(c_index * g_count / c_count + i)] = g_info[i][1]
-                            list_ft[round(c_index * g_count / c_count + i)] = g_info[i][2]
+                    line_use = int(ceil(round(sum([int(bool(i)) for i in blk_info["blk_cont"][cp]]) / g_count * c_count, 2)))
                 else:
-                    g_info = []
-                    subsrc_list = [0, 3, 1, 2, 6, 4, 5, 7, 8, 9, 10, 11]
-                    for i in subsrc_list:
-                        if i in cp_subsrc.keys():
-                            temp_fnt, temp_gly, temp_src = cp_subsrc[i]
-                            inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][i][1])), _get_glyph((temp_gly, int(cp)), blk_type), temp_src
-                            if inpt_fnt == (None, None):
-                                raise UniException([0, "C007", name, _subsrc_name(subsrc_list[i]) + " 源"])
-                            g_info.append([inpt_gly, inpt_src, inpt_fnt])
-                    for i in range(0, round(line_use * g_count / c_count)):
-                        if i < len(g_info):
-                            list_gl[round(c_index * g_count / c_count + i)] = g_info[i][0]
-                            list_sr[round(c_index * g_count / c_count + i)] = g_info[i][1]
-                            list_ft[round(c_index * g_count / c_count + i)] = g_info[i][2]
-                c_index += line_use
-            elif flag == 3:
-                min_cp = _extreme_cp(list_cp, "min")
-                max_cp = _extreme_cp(list_cp, "max")
-                if int(max_cp, 16) > 0:
+                    line_use = int(ceil(round(sum([int(bool(i)) for i in blk_info["blk_cont"][cp][1]]) / g_count * c_count, 2)))
+
+                if c_count != 24:
+                    if divmod(c_index + line_use - 1, c_count)[-1] < c_index or c_index > c_count:
+                        flag = 0
+                    elif divmod(divmod(c_index, 20)[-1] + line_use - 1, 20)[-1] < divmod(c_index, 20)[-1]:
+                        flag = 1
+                    elif len(cps):
+                        flag = 2
+                    else:
+                        flag = 3
+                else:
+                    if divmod(c_index + line_use - 1, c_count)[-1] < c_index or c_index > c_count:
+                        flag = 0
+                    elif divmod(divmod(c_index, 12)[-1] + line_use - 1, 12)[-1] < divmod(c_index, 12)[-1]:
+                        flag = 1
+                    elif len(cps):
+                        flag = 2
+                    else:
+                        flag = 3
+
+                if flag == 0:
+                    min_cp = _extreme_cp(list_cp, "min")
+                    max_cp = _extreme_cp(list_cp, "max")
                     print_pages.append([list_cp, list_rs, list_gl, list_sr, list_ft, min_cp, max_cp])
+                    list_cp = ["" for _ in range(c_count)]
+                    list_rs = ["" for _ in range(c_count)]
+                    list_gl = ["" for _ in range(g_count)]
+                    list_sr = ["" for _ in range(g_count)]
+                    list_ft = ["" for _ in range(g_count)]
+                    c_index = 0
+                    cps.append(cp)
+                elif flag == 1:
+                    if blk_type == "V":
+                        c_index = 12 * ceil(c_index / 12)
+                    else:
+                        c_index = 20 * ceil(c_index / 20)
+                    cps.append(cp)
+                elif flag == 2:
+                    list_cp[c_index] = hex(int(cp)).upper().replace("0X", "")
+                    if blk_type != "V":
+                        list_rs[c_index] = blk_info["blk_cont"][cp][0]
+                        if list_rs[c_index] is None:
+                            raise UniException([0, "C002", name, cp + " (" + hex(int(cp)).upper().replace("0X", "") + ") 缺少对应的 RS。"])
+                    if c_count == 40:
+                        if line_one == 1 and line_two == 0:
+                            subsrc_list = [0, 1, 3, 6, 4, 7]
+                        elif line_one == 0 and line_two == 1:
+                            subsrc_list = [2, 10, 9, 11, 5, 8]
+                        elif line_one == 1 and line_two == 1:
+                            subsrc_list = [0, 1, 3, 6, 4, 7, 2, 10, 9, 11, 5, 8]
+                        for i in range(len(subsrc_list)):
+                            if subsrc_list[i] in cp_subsrc.keys():
+                                temp_fnt, temp_gly, temp_src = cp_subsrc[subsrc_list[i]]
+                                inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][subsrc_list[i]][1])), _get_glyph((temp_gly, int(cp)), blk_type), temp_src
+                                if inpt_fnt == (None, None):
+                                    raise UniException([0, "C007", name, _subsrc_name(subsrc_list[i]) + " 源"])
+                                list_gl[round(c_index * g_count / c_count) + i] = inpt_gly
+                                list_sr[round(c_index * g_count / c_count) + i] = inpt_src
+                                list_ft[round(c_index * g_count / c_count) + i] = inpt_fnt
+                    elif c_count == 24:
+                        g_info = []
+                        for it in blk_info["blk_cont"][cp]:
+                            temp_fnt, temp_gly, temp_src = it[1], it[2], [it[3], it[4]]
+                            inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][1])), _get_glyph((it[0], int(cp)), blk_type), temp_src
+                            if inpt_fnt == (None, None):
+                                raise UniException([0, "C007", name, "IVD"])
+                            g_info.append([inpt_gly, inpt_src, inpt_fnt])
+                        for i in range(0, round(line_use * g_count / c_count)):
+                            if i < len(g_info):
+                                list_gl[round(c_index * g_count / c_count + i)] = g_info[i][0]
+                                list_sr[round(c_index * g_count / c_count + i)] = g_info[i][1]
+                                list_ft[round(c_index * g_count / c_count + i)] = g_info[i][2]
+                    else:
+                        g_info = []
+                        subsrc_list = [0, 3, 1, 2, 6, 4, 5, 7, 8, 9, 10, 11]
+                        for i in subsrc_list:
+                            if i in cp_subsrc.keys():
+                                temp_fnt, temp_gly, temp_src = cp_subsrc[i]
+                                inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][i][1])), _get_glyph((temp_gly, int(cp)), blk_type), temp_src
+                                if inpt_fnt == (None, None):
+                                    raise UniException([0, "C007", name, _subsrc_name(subsrc_list[i]) + " 源"])
+                                g_info.append([inpt_gly, inpt_src, inpt_fnt])
+                        for i in range(0, round(line_use * g_count / c_count)):
+                            if i < len(g_info):
+                                list_gl[round(c_index * g_count / c_count + i)] = g_info[i][0]
+                                list_sr[round(c_index * g_count / c_count + i)] = g_info[i][1]
+                                list_ft[round(c_index * g_count / c_count + i)] = g_info[i][2]
+                    c_index += line_use
+                elif flag == 3:
+                    min_cp = _extreme_cp(list_cp, "min")
+                    max_cp = _extreme_cp(list_cp, "max")
+                    if int(max_cp, 16) > 0:
+                        print_pages.append([list_cp, list_rs, list_gl, list_sr, list_ft, min_cp, max_cp])
+        else:
+            # TODO
+
+            # parse blk_info["blk_cont"]["names_list"]
+            parsed_list = []
+            for line in blk_info["blk_cont"]["names_list"]:
+                parsed_list += []
+
+            # r_count = 64
+            # list_nl = [["", "", ""] for _ in range(r_count)]
 
         # from json import dump
         # fp = open('E:/Unipage/_ws2017/res.json', 'w')
@@ -556,6 +568,7 @@ def make_proof(name: str):
         temp_dict["blk_name"] = blk_info["blk_name"]
         temp_dict["blk_initcp"] = blk_info["blk_initcp"]
         temp_dict["blk_finacp"] = blk_info["blk_finacp"]
+        temp_dict["page_title"] = blk_set["blk_cont"]["title"]
         temp_dict["print_pages"] = print_pages
         temp_dict["page_class"] = page_class
         temp_dict["char_count"] = c_count
