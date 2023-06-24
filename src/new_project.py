@@ -1,8 +1,8 @@
 from os.path import basename, splitext
 from re import sub
 
-from PySide2.QtUiTools import QUiLoader
-from PySide2.QtWidgets import QFileDialog
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtWidgets import QFileDialog
 
 from current import Current
 from tools import input_resource
@@ -23,13 +23,13 @@ class Project:
     prj_blk_info = None
 
     def __init__(self):
-        self.new_ui = QUiLoader().load('src/new_project.ui')
+        self.new_ui = QUiLoader().load("src/new_project.ui")
         self.new_ui.btn_file.clicked.connect(self.get_url)
         self.new_ui.btn_box.accepted.connect(self.ok)
         self.new_ui.line_name.textChanged.connect(self.update)
 
         self.prj_basic_info = {}
-        self.prj_rsc_info = {'upj': [], 'blk': [], 'fnt': [], 'att': []}
+        self.prj_rsc_info = {"upj": [], "blk": [], "fnt": [], "att": []}
         self.prj_set_info = []
         self.prj_blk_info = []
 
@@ -38,12 +38,12 @@ class Project:
         if project_dir:
             self.new_ui.line_url.setText(project_dir)
             if _wash_file(self.new_ui.line_name.text()):
-                self.new_ui.line_file.setText(project_dir + '/' + _wash_file(self.new_ui.line_name.text()) + '.upj')
+                self.new_ui.line_file.setText(project_dir + "/" + _wash_file(self.new_ui.line_name.text()) + ".upj")
                 self.new_ui.btn_box.setEnabled(True)
 
     def update(self):
         if _wash_file(self.new_ui.line_name.text()) and self.new_ui.line_url.text():
-            self.new_ui.line_file.setText(self.new_ui.line_url.text() + '/' + _wash_file(self.new_ui.line_name.text()) + '.upj')
+            self.new_ui.line_file.setText(self.new_ui.line_url.text() + "/" + _wash_file(self.new_ui.line_name.text()) + ".upj")
             self.new_ui.btn_box.setEnabled(True)
         else:
             self.new_ui.line_file.setText("")
@@ -55,7 +55,7 @@ class Project:
         Current.project.prj_basic_info["project_dir"] = self.new_ui.line_url.text()
         Current.project.prj_basic_info["project_file"] = self.new_ui.line_file.text()
 
-        open(Current.project.prj_basic_info["project_file"], 'w')
+        open(Current.project.prj_basic_info["project_file"], "w")
         input_resource(Current.project.prj_basic_info["project_file"], Current.project.prj_basic_info["project_file"], 2, None, True)
         Current.unipage.ui.setWindowTitle("Unipage  —  " + splitext(basename(Current.project.prj_basic_info["project_name"]))[0])
         Current.unipage.save_project()

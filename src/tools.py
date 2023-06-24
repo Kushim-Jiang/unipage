@@ -4,8 +4,8 @@ from os.path import basename, exists, splitext
 from re import sub
 from shutil import copyfile
 
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QTreeWidgetItem
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QTreeWidgetItem
 
 from current import Current
 from rsc_parser import Parser, _subsrc_name, _subsrc_no
@@ -34,7 +34,7 @@ def _bug(no: str) -> str:
         "J001": "块范围首模 16 不为 0，违反 Unicode Standard Conformance D10b。",
         "J002": "块范围尾模 16 不为 15，违反 Unicode Standard Conformance D10b。",
         "J003": "存在块外字符。",
-        "J004": "部首不存在。"
+        "J004": "部首不存在。",
     }[no]
 
 
@@ -57,9 +57,9 @@ def _font(no: int) -> str:
 def input_resource(src: str, des: str, chk: int, par: list, upj: bool):
     ext = splitext(des)[1]
     if upj:
-        array_exts = ['.upj', '.blk', '.att', '.ttf', '.otf']
+        array_exts = [".upj", ".blk", ".att", ".ttf", ".otf"]
     else:
-        array_exts = ['.blk', '.att', '.ttf', '.otf']
+        array_exts = [".blk", ".att", ".ttf", ".otf"]
     if ext in array_exts and des not in [info[2] for info in Current.files()]:
         if src != des and src is not None:
             if exists(des):
@@ -71,18 +71,18 @@ def input_resource(src: str, des: str, chk: int, par: list, upj: bool):
         item.setText(0, info[0])
         item.setText(1, _check(info[1]))
         item.setText(2, info[2])
-        if ext == '.upj':
+        if ext == ".upj":
             Current.unipage.ui.tree_file.topLevelItem(0).addChild(item)
             Current.project.prj_rsc_info["upj"].append(info)
-        elif ext == '.blk':
+        elif ext == ".blk":
             Current.unipage.ui.tree_file.topLevelItem(1).addChild(item)
             Current.project.prj_rsc_info["blk"].append(info)
             if info[1] == 2:
                 parse_resource(item)
-        elif ext == '.ttf' or ext == '.otf':
+        elif ext == ".ttf" or ext == ".otf":
             Current.unipage.ui.tree_file.topLevelItem(2).addChild(item)
             Current.project.prj_rsc_info["fnt"].append(info)
-        elif ext == '.att':
+        elif ext == ".att":
             Current.unipage.ui.tree_file.topLevelItem(3).addChild(item)
             Current.project.prj_rsc_info["att"].append(info)
         Current.unipage.ui.tree_file.expandAll()
@@ -97,7 +97,7 @@ def remove_resource(it: QTreeWidgetItem):
 
 
 def parse_resource(it: QTreeWidgetItem):
-    for rsc in (Current.project.prj_rsc_info["blk"] + Current.project.prj_rsc_info["att"]):
+    for rsc in Current.project.prj_rsc_info["blk"] + Current.project.prj_rsc_info["att"]:
         # it: [basename, _check, url]
         # rsc: [basename, _check, url, parse]
         if rsc[2] == it.text(2):
@@ -204,7 +204,18 @@ def _build_block(blk: dict, flag: bool):
 
     top_item = QTreeWidgetItem()
     top_item.setText(
-        1, temp_blk["blk_name"] + " [" + str(temp_blk["blk_initcp"]) + " (" + hex(temp_blk["blk_initcp"]).upper().replace("0X", "") + "), " + str(temp_blk["blk_finacp"]) + " (" + hex(temp_blk["blk_finacp"]).upper().replace("0X", "") + ")]")
+        1,
+        temp_blk["blk_name"]
+        + " ["
+        + str(temp_blk["blk_initcp"])
+        + " ("
+        + hex(temp_blk["blk_initcp"]).upper().replace("0X", "")
+        + "), "
+        + str(temp_blk["blk_finacp"])
+        + " ("
+        + hex(temp_blk["blk_finacp"]).upper().replace("0X", "")
+        + ")]",
+    )
     Current.unipage.ui.tree_out.addTopLevelItem(top_item)
 
     if flag == False:
@@ -328,7 +339,7 @@ def _build_setting(blk: dict, flag: bool):
     child_item.setText(0, "打印本块")
     child_item.setText(1, "◁　" + _yes_no(temp_blk["blk_cont"]["print"]) + "　▷")
     top_item.addChild(child_item)
-    
+
     child_item = QTreeWidgetItem()
     child_item.setText(0, "栏位")
     child_item.setText(1, "◁　" + _column(temp_blk["blk_cont"]["column"]) + "　▷")
@@ -336,12 +347,12 @@ def _build_setting(blk: dict, flag: bool):
         child_item.setText(1, "◁　2 栏，每栏 4 形　▷")
         child_item.setDisabled(True)
     top_item.addChild(child_item)
-    
+
     child_item = QTreeWidgetItem()
     child_item.setText(0, "首页版式")
     child_item.setText(1, "◁　" + _format(temp_blk["blk_cont"]["format"]) + "　▷")
     top_item.addChild(child_item)
-    
+
     child_item = QTreeWidgetItem()
     child_item.setText(0, "打印扉页")
     child_item.setText(1, "◁　" + _yes_no(temp_blk["blk_cont"]["title"]) + "　▷")
@@ -387,9 +398,13 @@ def previous_option(item: QTreeWidgetItem, flag: bool):
             if set["blk_name"] == item.parent().parent().text(1):
                 if set["blk_type"] not in ["V", "C"]:
                     if flag == False:
-                        set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] = (set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] - 1) % (len(Current.project.prj_rsc_info["fnt"]) + 1)
+                        set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] = (set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] - 1) % (
+                            len(Current.project.prj_rsc_info["fnt"]) + 1
+                        )
                     else:
-                        set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] = (set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] + 1) % (len(Current.project.prj_rsc_info["fnt"]) + 1)
+                        set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] = (set["blk_cont"]["font"][item.parent().indexOfChild(item)][0] + 1) % (
+                            len(Current.project.prj_rsc_info["fnt"]) + 1
+                        )
                     set["blk_cont"]["font"][item.parent().indexOfChild(item)][1] = _font(set["blk_cont"]["font"][item.parent().indexOfChild(item)][0])
                     item.setText(1, "◁　" + set["blk_cont"]["font"][item.parent().indexOfChild(item)][1] + "　▷")
                 else:
@@ -403,10 +418,21 @@ def previous_option(item: QTreeWidgetItem, flag: bool):
         for set in Current.project.prj_set_info:
             if set["blk_name"] == item.parent().text(1):
                 if flag == False:
-                    set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] = (set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] - 1) % [2, 4, 3, 2][item.parent().indexOfChild(item)]
+                    set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] = (
+                        set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] - 1
+                    ) % [2, 4, 3, 2][item.parent().indexOfChild(item)]
                 else:
-                    set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] = (set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] + 1) % [2, 4, 3, 2][item.parent().indexOfChild(item)]
-                item.setText(1, "◁　" + [_yes_no, _column, _format, _yes_no][item.parent().indexOfChild(item)](set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]]) + "　▷")
+                    set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] = (
+                        set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]] + 1
+                    ) % [2, 4, 3, 2][item.parent().indexOfChild(item)]
+                item.setText(
+                    1,
+                    "◁　"
+                    + [_yes_no, _column, _format, _yes_no][item.parent().indexOfChild(item)](
+                        set["blk_cont"][["print", "column", "format", "title"][item.parent().indexOfChild(item)]]
+                    )
+                    + "　▷",
+                )
 
 
 def colour_option(item: QTreeWidgetItem, colour: str):
@@ -426,7 +452,9 @@ def show_options():
             if Current.unipage.ui.tree_set.topLevelItem(block_itidx).text(1) == block_set["blk_name"]:
                 block_set["blk_cont"]["yellow"].sort()
                 for item_index in range(Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).childCount() - 1, -1, -1):
-                    Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).removeChild(Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).child(item_index))
+                    Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).removeChild(
+                        Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(3).child(item_index)
+                    )
                 for item in block_set["blk_cont"]["yellow"]:
                     child_item = QTreeWidgetItem()
                     child_item.setText(0, str(item))
@@ -435,7 +463,9 @@ def show_options():
 
                 block_set["blk_cont"]["blue"].sort()
                 for item_index in range(Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(4).childCount() - 1, -1, -1):
-                    Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(4).removeChild(Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(4).child(item_index))
+                    Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(4).removeChild(
+                        Current.unipage.ui.tree_set.topLevelItem(block_itidx).child(4).child(item_index)
+                    )
                 for item in block_set["blk_cont"]["blue"]:
                     child_item = QTreeWidgetItem()
                     child_item.setText(0, str(item))

@@ -39,7 +39,7 @@ def _subsrc_no(refsrc: str) -> int:
         return 0
 
 
-def _show_rs(rs: str) -> (str | None):
+def _show_rs(rs: str) -> str | None:
     variants = {
         "90'": "⺦",
         "120'": "⺰",
@@ -70,7 +70,7 @@ def _show_rs(rs: str) -> (str | None):
         '211"': "⻭",
         '212"': "⻯",
         '208"': "⻴",
-        '182"': "⻵"
+        '182"': "⻵",
     }
 
     if "'" not in rs.split(".")[0] and '"' not in rs.split(".")[0]:
@@ -95,22 +95,20 @@ def _parse_char(s: str) -> str:
 
 
 class UniException(Exception):
-
     def __init__(self, arg):
         self.arg = arg
 
 
 class Parser:
-
     def blk(url) -> tuple[list, list]:
         cnt = []
         bug = []
         try:
-            fp = open(url, 'r', encoding='utf-8')
+            fp = open(url, "r", encoding="utf-8")
             line: str = fp.readline().strip()
 
-            while line.lower() != '# eof':
-                if line and line[0] == '#':
+            while line.lower() != "# eof":
+                if line and line[0] == "#":
                     blk_range, blk_name, blk_type = line[1:].strip().split(";")
                     blk_range, blk_name, blk_type = blk_range.strip(), blk_name.strip(), blk_type.strip()
                     blk_init, blk_fina = blk_range.strip().split("..")
@@ -118,19 +116,19 @@ class Parser:
                     blk_cont = {}
 
                     if blk_name == "":
-                        raise UniException([0, "C003", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                        raise UniException([0, "C003", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                     if blk_type == "":
-                        raise UniException([0, "C004", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                        raise UniException([0, "C004", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                     if blk_init >= blk_fina:
-                        raise UniException([0, "C005", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                        raise UniException([0, "C005", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                     if blk_init % 16 != 0:
-                        bug.append([1, "J001", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                        bug.append([1, "J001", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                     if blk_fina % 16 != 15:
-                        bug.append([1, "J002", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                        bug.append([1, "J002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
 
                     line = fp.readline().strip()
                     while 1:
-                        if line and line[0] == '#':
+                        if line and line[0] == "#":
                             tmp_dict = dict()
                             tmp_dict["blk_initcp"] = blk_init
                             tmp_dict["blk_finacp"] = blk_fina
@@ -161,12 +159,22 @@ class Parser:
                                     chr_sq = int(chr_sq.strip(), 10)
                                     chr_refsrc = chr_refsrc.strip()
                                     chr_pua = int(chr_pua.upper().strip().replace("U+", ""), 16)
-                                    blk_cont.update({str(chr_sq) + "　" + str(blk_init + chr_sq - 1) + "　" + _subsrc_name(_subsrc_no(chr_refsrc)): [None, chr_pua, chr_refsrc]})
+                                    blk_cont.update(
+                                        {
+                                            str(chr_sq)
+                                            + "　"
+                                            + str(blk_init + chr_sq - 1)
+                                            + "　"
+                                            + _subsrc_name(_subsrc_no(chr_refsrc)): [None, chr_pua, chr_refsrc]
+                                        }
+                                    )
                                 elif len(line.strip().split("\t")) == 2:
                                     chr_sq, chr_refsrc = line.strip().split("\t")
                                     chr_sq = int(chr_sq.strip(), 16)
                                     chr_refsrc = chr_refsrc.strip()
-                                    blk_cont.update({str(chr_sq) + "　" + str(blk_init + chr_sq - 1) + "　" + _subsrc_name(_subsrc_no(chr_refsrc)): [None, None, chr_refsrc]})
+                                    blk_cont.update(
+                                        {str(chr_sq) + "　" + str(blk_init + chr_sq - 1) + "　" + _subsrc_name(_subsrc_no(chr_refsrc)): [None, None, chr_refsrc]}
+                                    )
                                 else:
                                     raise ValueError
                             elif blk_type == "H":
@@ -182,8 +190,8 @@ class Parser:
                                 chr_set, chr_cid = chr_set.strip(), chr_cid.strip()
                                 blk_cont.update({str(chr_cp) + "　" + str(chr_slt) + "　" + str(chr_set): [None, None, chr_cid]})
 
-                            if chr_cp not in range(blk_init, blk_fina + 1):
-                                bug.append([1, "J003", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                            if blk_type not in ["W"] and chr_cp not in range(blk_init, blk_fina + 1):
+                                bug.append([1, "J003", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                             line = fp.readline().strip()
                         else:
                             line = fp.readline().strip()
@@ -191,13 +199,13 @@ class Parser:
                     line = fp.readline().strip()
         except Exception as exc:
             if exc.__class__.__name__ == "ValueError":
-                bug.append([0, "C001", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                bug.append([0, "C001", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
             elif exc.__class__.__name__ == "UnicodeDecodeError":
                 bug.append([0, "C001", basename(url), ""])
             elif exc.__class__.__name__ == "UniException":
                 bug.append(exc.arg)
             else:
-                bug.append([0, "C000", basename(url), exc.__class__.__name__ + ": " + line.strip().encode('unicode_escape').decode('utf-8')])
+                bug.append([0, "C000", basename(url), exc + ": " + line.strip().encode("unicode_escape").decode("utf-8")])
             pass
         finally:
             fp.close()
@@ -207,11 +215,11 @@ class Parser:
         cnt = []
         bug = []
         try:
-            fp = open(url, 'r', encoding='utf-8')
+            fp = open(url, "r", encoding="utf-8")
             line: str = fp.readline().strip()
 
-            while line.lower() != '# eof':
-                if line and line[0] == '#':
+            while line.lower() != "# eof":
+                if line and line[0] == "#":
                     inf_type = line[1:].strip()
                     set_cont = {}
                     lst_cont = []
@@ -221,7 +229,7 @@ class Parser:
 
                     line = fp.readline().strip()
                     while 1:
-                        if line and line[0] == '#':
+                        if line and line[0] == "#":
                             tmp_dict = dict()
                             if set_cont:
                                 tmp_dict["inf_cont"] = set_cont
@@ -237,10 +245,13 @@ class Parser:
                                 rs_cp = int(rs_cp.strip().upper().replace("U+", ""), 16)
                                 rs_values = rs_values.strip().split(" ")
                                 for rs_value in rs_values:
-                                    if match("[1-9][0-9]{0,2}[\'\"]?\.-?[0-9]{1,2}", rs_value.strip()) == None or match("[1-9][0-9]{0,2}[\'\"]?\.-?[0-9]{1,2}", rs_value.strip()).group() != rs_value:
-                                        raise UniException([0, "C002", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                                    if (
+                                        match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()) == None
+                                        or match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()).group() != rs_value
+                                    ):
+                                        raise UniException([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     if _show_rs(rs_value) == None:
-                                        bug.append([1, "J004", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                                        bug.append([1, "J004", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     _, _ = rs_value.strip().split(".")
                                 set_cont.update({str(rs_cp): rs_values})
                             elif inf_type == "NL":
@@ -334,13 +345,13 @@ class Parser:
                     line = fp.readline().strip()
         except Exception as exc:
             if exc.__class__.__name__ == "ValueError":
-                bug.append([0, "C001", basename(url), line.strip().encode('unicode_escape').decode('utf-8')])
+                bug.append([0, "C001", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
             elif exc.__class__.__name__ == "UnicodeDecodeError":
                 bug.append([0, "C001", basename(url), ""])
             elif exc.__class__.__name__ == "UniException":
                 bug.append(exc.arg)
             else:
-                bug.append([0, "C000", basename(url), exc.__class__.__name__ + ": " + line.strip().encode('unicode_escape').decode('utf-8')])
+                bug.append([0, "C000", basename(url), exc.__class__.__name__ + ": " + line.strip().encode("unicode_escape").decode("utf-8")])
             pass
         finally:
             fp.close()
@@ -350,7 +361,7 @@ class Parser:
         cnt = []
         bug = []
         try:
-            fp = open(url, 'r', encoding='utf-8')
+            fp = open(url, "r", encoding="utf-8")
             cnt = load(fp)
         except Exception as exc:
             if exc.__class__.__name__ == "JSONDecodeError":

@@ -18,9 +18,9 @@ from current import Current
 from rsc_parser import UniException, _show_rs, _subsrc_name, _subsrc_no
 
 
-def _build_svg(pages: list) -> (dict | tuple[str, str]):
-    if not exists(dirname(Current.project.prj_basic_info["project_dir"] + '/svg/')):
-        makedirs(dirname(Current.project.prj_basic_info["project_dir"] + '/svg/'))
+def _build_svg(pages: list) -> dict | tuple[str, str]:
+    if not exists(dirname(Current.project.prj_basic_info["project_dir"] + "/svg/")):
+        makedirs(dirname(Current.project.prj_basic_info["project_dir"] + "/svg/"))
 
     glyph_set = set()
     glyph_dict = dict()
@@ -52,7 +52,9 @@ def _build_svg(pages: list) -> (dict | tuple[str, str]):
                     cp_str = "‹" + str(cp) + " (" + hex(cp).upper().replace("0X", "") + ")›"
                     glyph_name = font_cmap[cp]
                 elif cp.__class__.__name__ in ["list", "tuple"]:
-                    cp_str = "‹" + str(cp[1]) + " (" + hex(cp[1]).upper().replace("0X", "") + "), " + str(cp[0]) + " (" + hex(cp[0]).upper().replace("0X", "") + ")›"
+                    cp_str = (
+                        "‹" + str(cp[1]) + " (" + hex(cp[1]).upper().replace("0X", "") + "), " + str(cp[0]) + " (" + hex(cp[0]).upper().replace("0X", "") + ")›"
+                    )
                     glyph_name = [tu for tu in font["cmap"].getcmap(0, 5).uvsDict[cp[0]] if tu[0] == cp[1]][0][1]
                     if glyph_name == None:
                         glyph_name = font_cmap[cp[1]]
@@ -61,22 +63,24 @@ def _build_svg(pages: list) -> (dict | tuple[str, str]):
                 svg_pen = svgPathPen.SVGPathPen(font_glyph_set)
                 glyph.draw(svg_pen)
                 glyph.draw(bounds_pen)
-                ascender = font['OS/2'].sTypoAscender
-                descender = font['OS/2'].sTypoDescender
+                ascender = font["OS/2"].sTypoAscender
+                descender = font["OS/2"].sTypoDescender
                 width = glyph.width
                 fnt_width.append(width)
                 height = ascender - descender
-                content = dedent(f'''\
+                content = dedent(
+                    f"""\
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {-ascender} {width} {height}">
                             <g transform="scale(1, -1)">
                                 <path d="{svg_pen.getCommands()}"/>
                             </g>
                         </svg>
-                    ''')
-                file_name = sub(r"\.", "_", basename(fnt[1]).strip()) + '_' + sub(r"\.", "_", glyph_name.strip()) + '.svg'
-                with open(Current.project.prj_basic_info["project_dir"] + '/svg/' + file_name, 'w') as fp:
+                    """
+                )
+                file_name = sub(r"\.", "_", basename(fnt[1]).strip()) + "_" + sub(r"\.", "_", glyph_name.strip()) + ".svg"
+                with open(Current.project.prj_basic_info["project_dir"] + "/svg/" + file_name, "w") as fp:
                     fp.write(content)
-                glyph_dict[(cp, fnt)] = (Current.project.prj_basic_info["project_dir"] + '/svg/' + file_name, width)
+                glyph_dict[(cp, fnt)] = (Current.project.prj_basic_info["project_dir"] + "/svg/" + file_name, width)
 
                 cp_index += 1
                 Current.unipage.ui.bar.setValue(20 + 80 * cp_index / cp_count)
@@ -92,18 +96,18 @@ def _build_svg(pages: list) -> (dict | tuple[str, str]):
 
 
 def make_pdf(proof: dict):
-    if not exists(dirname(Current.project.prj_basic_info["project_dir"] + '/pdf/')):
-        makedirs(dirname(Current.project.prj_basic_info["project_dir"] + '/pdf/'))
+    if not exists(dirname(Current.project.prj_basic_info["project_dir"] + "/pdf/")):
+        makedirs(dirname(Current.project.prj_basic_info["project_dir"] + "/pdf/"))
 
     date_str = str(datetime.today().date())
     column_count = int(ceil(proof["char_count"] / 20))
     row_count = int(proof["char_count"] / column_count)
     col_count = {24: 4, 40: 6, 60: 3, 80: 2, 100: 1}[proof["char_count"]]
 
-    file_pointer = open(Current.project.prj_basic_info["project_dir"] + '/pdf/' + proof["blk_name"] + '.pdf', "w+")
+    file_pointer = open(Current.project.prj_basic_info["project_dir"] + "/pdf/" + proof["blk_name"] + ".pdf", "w+")
     file_pointer.close()
     dw = shapes.Drawing(612, 792)
-    cv = canvas.Canvas(Current.project.prj_basic_info["project_dir"] + '/pdf/' + proof["blk_name"] + '.pdf')
+    cv = canvas.Canvas(Current.project.prj_basic_info["project_dir"] + "/pdf/" + proof["blk_name"] + ".pdf")
 
     pdfmetrics.registerFont(ttfonts.TTFont("Noto Sans Regular", "src/fonts/NotoSans-Regular.ttf"))
     pdfmetrics.registerFont(ttfonts.TTFont("Noto Sans Black", "src/fonts/NotoSans-Black.ttf"))
@@ -123,30 +127,53 @@ def make_pdf(proof: dict):
     # ========  draw first page ========
     # ==================================
     if proof["page_title"]:
-        first_page = [[proof["blk_name"], 80, 80, 11, "Noto Sans Black"], ["Range: " + hex(proof["blk_initcp"]).upper().replace("0X", "") + " – " + hex(proof["blk_finacp"]).upper().replace("0X", ""), 0, 13, 9, "Noto Sans Black"],
-                      ["This file contains the codepoints, the reference glyphs and the other information of characters in", 0, 20, 9, "Noto Sans Light"]]
+        first_page = [
+            [proof["blk_name"], 80, 80, 11, "Noto Sans Black"],
+            [
+                "Range: " + hex(proof["blk_initcp"]).upper().replace("0X", "") + " – " + hex(proof["blk_finacp"]).upper().replace("0X", ""),
+                0,
+                13,
+                9,
+                "Noto Sans Black",
+            ],
+            ["This file contains the codepoints, the reference glyphs and the other information of characters in", 0, 20, 9, "Noto Sans Light"],
+        ]
         if proof["char_count"] != 24:
             first_page.append(["the blocks.", 0, 11, 9, "Noto Sans Light"])
         else:
             first_page.append(["the database.", 0, 11, 9, "Noto Sans Light"])
-        first_page += [["Disclaimer", 0, 23, 9, "Noto Sans Black"], ["These charts are intended to show the distribution of the codespace and partial information of the", 0, 13, 9, "Noto Sans Light"],
-                       ["characters only, and do not indicate the character set model and exact understanding of each", 0, 11, 9, "Noto Sans Light"],
-                       ["character for the scripts involved. For a complete understanding of the use of the characters", 0, 11, 9, "Noto Sans Light"],
-                       ["contained in this file, please consult the specification, the technical notes, the annexes", 0, 11, 9, "Noto Sans Light"], ["or the proposals associated.", 0, 11, 9, "Noto Sans Light"]]
-        first_page += [["Fonts", 0, 23, 9, "Noto Sans Black"], ["The shapes of the reference glyphs used in these code charts are not prescriptive. Considerable", 0, 13, 9, "Noto Sans Light"],
-                       ["variation is to be expected in actual fonts. The particular fonts used in these charts are shown below:", 0, 11, 9, "Noto Sans Light"], ["", 30, 8, 9, "Noto Sans Light"]]
+        first_page += [
+            ["Disclaimer", 0, 23, 9, "Noto Sans Black"],
+            ["These charts are intended to show the distribution of the codespace and partial information of the", 0, 13, 9, "Noto Sans Light"],
+            ["characters only, and do not indicate the character set model and exact understanding of each", 0, 11, 9, "Noto Sans Light"],
+            ["character for the scripts involved. For a complete understanding of the use of the characters", 0, 11, 9, "Noto Sans Light"],
+            ["contained in this file, please consult the specification, the technical notes, the annexes", 0, 11, 9, "Noto Sans Light"],
+            ["or the proposals associated.", 0, 11, 9, "Noto Sans Light"],
+        ]
+        first_page += [
+            ["Fonts", 0, 23, 9, "Noto Sans Black"],
+            ["The shapes of the reference glyphs used in these code charts are not prescriptive. Considerable", 0, 13, 9, "Noto Sans Light"],
+            ["variation is to be expected in actual fonts. The particular fonts used in these charts are shown below:", 0, 11, 9, "Noto Sans Light"],
+            ["", 30, 8, 9, "Noto Sans Light"],
+        ]
         for font in font_set:
-            first_page += [[ttLib.TTFont(font[1])["name"].getBestFullName(), -15, 11, 9, "Noto Sans Regular"],
-                           [ttLib.TTFont(font[1])["name"].names[5].toBytes().decode(ttLib.TTFont(font[1])["name"].names[5].getEncoding()), 15, 11, 9, "Noto Sans Light"]]
+            first_page += [
+                [ttLib.TTFont(font[1])["name"].getBestFullName(), -15, 11, 9, "Noto Sans Regular"],
+                [ttLib.TTFont(font[1])["name"].names[5].toBytes().decode(ttLib.TTFont(font[1])["name"].names[5].getEncoding()), 15, 11, 9, "Noto Sans Light"],
+            ]
         first_page += [["", -30, 3, 9, "Noto Sans Light"]]
-        first_page += [["Terms of Use", 0, 23, 9, "Noto Sans Black"], ["The code charts are compiled and printed by Unibook software, which does not retain copyright on", 0, 13, 9, "Noto Sans Light"],
-                       ["the production process. The fonts and font data used in production of these code charts may NOT be", 0, 11, 9, "Noto Sans Light"],
-                       ["extracted, or used in any other way in any product or publication, without permission or license", 0, 11, 9, "Noto Sans Light"], ["granted by the typeface owner(s).", 0, 11, 9, "Noto Sans Light"]]
+        first_page += [
+            ["Terms of Use", 0, 23, 9, "Noto Sans Black"],
+            ["The code charts are compiled and printed by Unibook software, which does not retain copyright on", 0, 13, 9, "Noto Sans Light"],
+            ["the production process. The fonts and font data used in production of these code charts may NOT be", 0, 11, 9, "Noto Sans Light"],
+            ["extracted, or used in any other way in any product or publication, without permission or license", 0, 11, 9, "Noto Sans Light"],
+            ["granted by the typeface owner(s).", 0, 11, 9, "Noto Sans Light"],
+        ]
 
         writer = (0, 0)
         for line in first_page:
             writer = (writer[0] + line[1], writer[1] + line[2])
-            dw.add(shapes.String(writer[0], 792 - writer[1], line[0], textAnchor='start', fillColor='black', fontName=line[4], fontSize=line[3]))
+            dw.add(shapes.String(writer[0], 792 - writer[1], line[0], textAnchor="start", fillColor="black", fontName=line[4], fontSize=line[3]))
 
         try:
             renderPDF.draw(dw, cv, 0, 0, showBoundary=False)
@@ -190,11 +217,31 @@ def make_pdf(proof: dict):
                     dw.add(shapes.Line(block_x[i], 792 - down_y, block_x[i + 1], 792 - down_y, strokeColor="black", strokeWidth=1))
                     if proof["char_count"] == 40:
                         dw.add(shapes.Line(block_x[i], 792 - title_y, block_x[i + 1], 792 - title_y, strokeColor="black", strokeWidth=1))
-                        dw.add(shapes.String(title_x[5 * i + 0], 792 - 86.88, "HEX", textAnchor='middle', fillColor='black', fontName='Noto Sans Regular', fontSize=11))
-                        dw.add(shapes.String(title_x[5 * i + 1], 792 - 86.88, "C", textAnchor='middle', fillColor='black', fontName='Noto Sans Regular', fontSize=11))
-                        dw.add(shapes.String(title_x[5 * i + 2], 792 - 86.88, "J", textAnchor='middle', fillColor='black', fontName='Noto Sans Regular', fontSize=11))
-                        dw.add(shapes.String(title_x[5 * i + 3], 792 - 86.88, "K", textAnchor='middle', fillColor='black', fontName='Noto Sans Regular', fontSize=11))
-                        dw.add(shapes.String(title_x[5 * i + 4], 792 - 86.88, "V", textAnchor='middle', fillColor='black', fontName='Noto Sans Regular', fontSize=11))
+                        dw.add(
+                            shapes.String(
+                                title_x[5 * i + 0], 792 - 86.88, "HEX", textAnchor="middle", fillColor="black", fontName="Noto Sans Regular", fontSize=11
+                            )
+                        )
+                        dw.add(
+                            shapes.String(
+                                title_x[5 * i + 1], 792 - 86.88, "C", textAnchor="middle", fillColor="black", fontName="Noto Sans Regular", fontSize=11
+                            )
+                        )
+                        dw.add(
+                            shapes.String(
+                                title_x[5 * i + 2], 792 - 86.88, "J", textAnchor="middle", fillColor="black", fontName="Noto Sans Regular", fontSize=11
+                            )
+                        )
+                        dw.add(
+                            shapes.String(
+                                title_x[5 * i + 3], 792 - 86.88, "K", textAnchor="middle", fillColor="black", fontName="Noto Sans Regular", fontSize=11
+                            )
+                        )
+                        dw.add(
+                            shapes.String(
+                                title_x[5 * i + 4], 792 - 86.88, "V", textAnchor="middle", fillColor="black", fontName="Noto Sans Regular", fontSize=11
+                            )
+                        )
 
         # =============================
         # ========  draw title ========
@@ -206,11 +253,33 @@ def make_pdf(proof: dict):
         elif page_type == "Right":
             head_x = [round(x + format_shift, 2) for x in head_x]
 
-        dw.add(shapes.String(head_x[1], 792 - head_y[0], proof["blk_name"], textAnchor='middle', fillColor='black', fontName='Noto Sans Black', fontSize=11))
-        dw.add(shapes.String(head_x[0], 792 - head_y[0], proof["print_pages"][page][5], textAnchor='start', fillColor='black', fontName='Noto Sans Black', fontSize=11))
-        dw.add(shapes.String(head_x[2], 792 - head_y[0], proof["print_pages"][page][6], textAnchor='end', fillColor='black', fontName='Noto Sans Black', fontSize=11))
-        dw.add(shapes.String(head_x[3], 792 - head_y[1], "Printed by Unipage, " + date_str + ".", textAnchor='end', fillColor='black', fontName='Noto Sans Italic', fontSize=9))
-        dw.add(shapes.String(head_x[1], 792 - head_y[2], "—  " + str(page + 1) + "  —", textAnchor='middle', fillColor='black', fontName='Noto Sans Regular', fontSize=9))
+        dw.add(shapes.String(head_x[1], 792 - head_y[0], proof["blk_name"], textAnchor="middle", fillColor="black", fontName="Noto Sans Black", fontSize=11))
+        dw.add(
+            shapes.String(
+                head_x[0], 792 - head_y[0], proof["print_pages"][page][5], textAnchor="start", fillColor="black", fontName="Noto Sans Black", fontSize=11
+            )
+        )
+        dw.add(
+            shapes.String(
+                head_x[2], 792 - head_y[0], proof["print_pages"][page][6], textAnchor="end", fillColor="black", fontName="Noto Sans Black", fontSize=11
+            )
+        )
+        dw.add(
+            shapes.String(
+                head_x[3],
+                792 - head_y[1],
+                "Printed by Unipage, " + date_str + ".",
+                textAnchor="end",
+                fillColor="black",
+                fontName="Noto Sans Italic",
+                fontSize=9,
+            )
+        )
+        dw.add(
+            shapes.String(
+                head_x[1], 792 - head_y[2], "—  " + str(page + 1) + "  —", textAnchor="middle", fillColor="black", fontName="Noto Sans Regular", fontSize=9
+            )
+        )
 
         # ===============================
         # ========  draw content ========
@@ -243,72 +312,95 @@ def make_pdf(proof: dict):
                 if proof["char_count"] != 24:
                     # non-IVD codepoint
                     dw.add(
-                        shapes.String(nonivd_first_x[0] + block_index * (right_x - left_x) / column_count,
-                                      792 - (nonivd_first_y[1] + line_index * nonivd_row_gap_y),
-                                      str(proof["print_pages"][page][0][line_index + block_index * row_count]),
-                                      textAnchor='middle',
-                                      fillColor='black',
-                                      fontName='Noto Sans Regular',
-                                      fontSize=10))
+                        shapes.String(
+                            nonivd_first_x[0] + block_index * (right_x - left_x) / column_count,
+                            792 - (nonivd_first_y[1] + line_index * nonivd_row_gap_y),
+                            str(proof["print_pages"][page][0][line_index + block_index * row_count]),
+                            textAnchor="middle",
+                            fillColor="black",
+                            fontName="Noto Sans Regular",
+                            fontSize=10,
+                        )
+                    )
                     # non-IVD radical-stroke
                     for rs_index in range(0, len(proof["print_pages"][page][1][line_index + block_index * row_count])):
                         dw.add(
-                            shapes.String(nonivd_first_x[0] + block_index * (right_x - left_x) / column_count,
-                                          792 - (nonivd_first_y[2] + line_index * nonivd_row_gap_y + rs_index * nonivd_rs_gap_y),
-                                          _show_rs(proof["print_pages"][page][1][line_index + block_index * row_count][rs_index]),
-                                          textAnchor='middle',
-                                          fillColor='black',
-                                          fontName='Noto Sans Extra Condensed',
-                                          fontSize=6))
+                            shapes.String(
+                                nonivd_first_x[0] + block_index * (right_x - left_x) / column_count,
+                                792 - (nonivd_first_y[2] + line_index * nonivd_row_gap_y + rs_index * nonivd_rs_gap_y),
+                                _show_rs(proof["print_pages"][page][1][line_index + block_index * row_count][rs_index]),
+                                textAnchor="middle",
+                                fillColor="black",
+                                fontName="Noto Sans Extra Condensed",
+                                fontSize=6,
+                            )
+                        )
                 else:
                     # IVD codepoint
                     dw.add(
-                        shapes.String(ivd_first_x[0] + block_index * ivd_block_gap_x,
-                                      792 - (ivd_first_y[3] + line_index * ivd_row_gap_y),
-                                      str(proof["print_pages"][page][0][line_index + block_index * row_count]),
-                                      textAnchor='middle',
-                                      fillColor='black',
-                                      fontName='Noto Sans Regular',
-                                      fontSize=10))
+                        shapes.String(
+                            ivd_first_x[0] + block_index * ivd_block_gap_x,
+                            792 - (ivd_first_y[3] + line_index * ivd_row_gap_y),
+                            str(proof["print_pages"][page][0][line_index + block_index * row_count]),
+                            textAnchor="middle",
+                            fillColor="black",
+                            fontName="Noto Sans Regular",
+                            fontSize=10,
+                        )
+                    )
                 for source_index in range(0, col_count):
                     if proof["char_count"] == 24:
                         if proof["print_pages"][page][2][source_index + line_index * col_count + block_index * row_count * col_count] != "":
                             # IVD content
                             dw.add(
-                                shapes.String(ivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
-                                              792 - (ivd_first_y[0] + line_index * ivd_row_gap_y),
-                                              hex(proof["print_pages"][page][2][source_index + line_index * col_count + block_index * row_count * col_count][0]).upper().replace("0X", ""),
-                                              textAnchor='middle',
-                                              fillColor='black',
-                                              fontName='Noto Sans Regular',
-                                              fontSize=6))
+                                shapes.String(
+                                    ivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
+                                    792 - (ivd_first_y[0] + line_index * ivd_row_gap_y),
+                                    hex(proof["print_pages"][page][2][source_index + line_index * col_count + block_index * row_count * col_count][0])
+                                    .upper()
+                                    .replace("0X", ""),
+                                    textAnchor="middle",
+                                    fillColor="black",
+                                    fontName="Noto Sans Regular",
+                                    fontSize=6,
+                                )
+                            )
                         if proof["print_pages"][page][3][source_index + line_index * col_count + block_index * row_count * col_count] != "":
                             dw.add(
-                                shapes.String(ivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
-                                              792 - (ivd_first_y[1] + line_index * ivd_row_gap_y),
-                                              proof["print_pages"][page][3][source_index + line_index * col_count + block_index * row_count * col_count][1],
-                                              textAnchor='middle',
-                                              fillColor='black',
-                                              fontName='Noto Sans Extra Condensed',
-                                              fontSize=6))
+                                shapes.String(
+                                    ivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
+                                    792 - (ivd_first_y[1] + line_index * ivd_row_gap_y),
+                                    proof["print_pages"][page][3][source_index + line_index * col_count + block_index * row_count * col_count][1],
+                                    textAnchor="middle",
+                                    fillColor="black",
+                                    fontName="Noto Sans Extra Condensed",
+                                    fontSize=6,
+                                )
+                            )
                             dw.add(
-                                shapes.String(ivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
-                                              792 - (ivd_first_y[2] + line_index * ivd_row_gap_y),
-                                              proof["print_pages"][page][3][source_index + line_index * col_count + block_index * row_count * col_count][0],
-                                              textAnchor='middle',
-                                              fillColor='black',
-                                              fontName='Noto Sans Extra Condensed',
-                                              fontSize=6))
+                                shapes.String(
+                                    ivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
+                                    792 - (ivd_first_y[2] + line_index * ivd_row_gap_y),
+                                    proof["print_pages"][page][3][source_index + line_index * col_count + block_index * row_count * col_count][0],
+                                    textAnchor="middle",
+                                    fillColor="black",
+                                    fontName="Noto Sans Extra Condensed",
+                                    fontSize=6,
+                                )
+                            )
                     else:
                         # non-IVD srcref
                         dw.add(
-                            shapes.String(nonivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * (right_x - left_x) / column_count,
-                                          792 - (nonivd_first_y[0] + line_index * nonivd_row_gap_y),
-                                          proof["print_pages"][page][3][source_index + line_index * col_count + block_index * col_count * row_count],
-                                          textAnchor='middle',
-                                          fillColor='black',
-                                          fontName='Noto Sans Extra Condensed',
-                                          fontSize=6))
+                            shapes.String(
+                                nonivd_first_x[1] + source_index * nonivd_subsrc_gap_x + block_index * (right_x - left_x) / column_count,
+                                792 - (nonivd_first_y[0] + line_index * nonivd_row_gap_y),
+                                proof["print_pages"][page][3][source_index + line_index * col_count + block_index * col_count * row_count],
+                                textAnchor="middle",
+                                fillColor="black",
+                                fontName="Noto Sans Extra Condensed",
+                                fontSize=6,
+                            )
+                        )
 
         try:
             renderPDF.draw(dw, cv, 0, 0, showBoundary=False)
@@ -322,27 +414,58 @@ def make_pdf(proof: dict):
             for line_index in range(0, row_count):
                 for source_index in range(0, col_count):
                     if proof["char_count"] == 24:
-                        svg, sca = proof["glyph_dict"][tuple([
-                            tuple(proof["print_pages"][page][2][source_index + line_index * col_count + block_index * col_count * row_count]),
-                            tuple(proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count])
-                        ])]
+                        svg, sca = proof["glyph_dict"][
+                            tuple(
+                                [
+                                    tuple(proof["print_pages"][page][2][source_index + line_index * col_count + block_index * col_count * row_count]),
+                                    tuple(proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count]),
+                                ]
+                            )
+                        ]
                     else:
-                        svg, sca = proof["glyph_dict"][tuple([
-                            proof["print_pages"][page][2][source_index + line_index * col_count + block_index * col_count * row_count],
-                            tuple(proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count])
-                        ])]
+                        svg, sca = proof["glyph_dict"][
+                            tuple(
+                                [
+                                    proof["print_pages"][page][2][source_index + line_index * col_count + block_index * col_count * row_count],
+                                    tuple(proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count]),
+                                ]
+                            )
+                        ]
                     if svg != None:
                         dw = svg2rlg(svg)
                         dw.scale(21 / sca, 21 / sca)
                         if proof["char_count"] != 24:
                             # non-IVD glyph
                             renderPDF.draw(
-                                dw, cv, nonivd_first_x[2] + source_index * nonivd_subsrc_gap_x + block_index * (right_x - left_x) / column_count,
-                                792 - (nonivd_first_y[3] + line_index * nonivd_row_gap_y + 21 * proof["glyph_dict"]["fix", proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count]]))
+                                dw,
+                                cv,
+                                nonivd_first_x[2] + source_index * nonivd_subsrc_gap_x + block_index * (right_x - left_x) / column_count,
+                                792
+                                - (
+                                    nonivd_first_y[3]
+                                    + line_index * nonivd_row_gap_y
+                                    + 21
+                                    * proof["glyph_dict"][
+                                        "fix", proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count]
+                                    ]
+                                ),
+                            )
                         else:
                             # IVD glyph
-                            renderPDF.draw(dw, cv, ivd_first_x[2] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
-                                           792 - (ivd_first_y[4] + line_index * ivd_row_gap_y + 21 * proof["glyph_dict"]["fix", proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count]]))
+                            renderPDF.draw(
+                                dw,
+                                cv,
+                                ivd_first_x[2] + source_index * nonivd_subsrc_gap_x + block_index * ivd_block_gap_x,
+                                792
+                                - (
+                                    ivd_first_y[4]
+                                    + line_index * ivd_row_gap_y
+                                    + 21
+                                    * proof["glyph_dict"][
+                                        "fix", proof["print_pages"][page][4][source_index + line_index * col_count + block_index * col_count * row_count]
+                                    ]
+                                ),
+                            )
 
         # ===========================
         # ========  new page ========
@@ -382,7 +505,7 @@ def _get_font(font_info: tuple[str, str]) -> tuple[str, str]:
         return (font_name, font_dir)
 
 
-def _get_glyph(glyph_info: tuple[int, int], blk_type: str) -> (int | tuple[int, int]):
+def _get_glyph(glyph_info: tuple[int, int], blk_type: str) -> int | tuple[int, int]:
     if blk_type != "V":
         if glyph_info[0] != None:
             return glyph_info[0]
@@ -501,7 +624,11 @@ def make_proof(name: str):
                         for i in range(len(subsrc_list)):
                             if subsrc_list[i] in cp_subsrc.keys():
                                 temp_fnt, temp_gly, temp_src = cp_subsrc[subsrc_list[i]]
-                                inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][subsrc_list[i]][1])), _get_glyph((temp_gly, int(cp)), blk_type), temp_src
+                                inpt_fnt, inpt_gly, inpt_src = (
+                                    _get_font((temp_fnt, blk_set["blk_cont"]["font"][subsrc_list[i]][1])),
+                                    _get_glyph((temp_gly, int(cp)), blk_type),
+                                    temp_src,
+                                )
                                 if inpt_fnt == (None, None):
                                     raise UniException([0, "C007", name, _subsrc_name(subsrc_list[i]) + " 源"])
                                 list_gl[round(c_index * g_count / c_count) + i] = inpt_gly
@@ -511,7 +638,11 @@ def make_proof(name: str):
                         g_info = []
                         for it in blk_info["blk_cont"][cp]:
                             temp_fnt, temp_gly, temp_src = it[1], it[2], [it[3], it[4]]
-                            inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][1])), _get_glyph((it[0], int(cp)), blk_type), temp_src
+                            inpt_fnt, inpt_gly, inpt_src = (
+                                _get_font((temp_fnt, blk_set["blk_cont"]["font"][1])),
+                                _get_glyph((it[0], int(cp)), blk_type),
+                                temp_src,
+                            )
                             if inpt_fnt == (None, None):
                                 raise UniException([0, "C007", name, "IVD"])
                             g_info.append([inpt_gly, inpt_src, inpt_fnt])
@@ -526,7 +657,11 @@ def make_proof(name: str):
                         for i in subsrc_list:
                             if i in cp_subsrc.keys():
                                 temp_fnt, temp_gly, temp_src = cp_subsrc[i]
-                                inpt_fnt, inpt_gly, inpt_src = _get_font((temp_fnt, blk_set["blk_cont"]["font"][i][1])), _get_glyph((temp_gly, int(cp)), blk_type), temp_src
+                                inpt_fnt, inpt_gly, inpt_src = (
+                                    _get_font((temp_fnt, blk_set["blk_cont"]["font"][i][1])),
+                                    _get_glyph((temp_gly, int(cp)), blk_type),
+                                    temp_src,
+                                )
                                 if inpt_fnt == (None, None):
                                     raise UniException([0, "C007", name, _subsrc_name(subsrc_list[i]) + " 源"])
                                 g_info.append([inpt_gly, inpt_src, inpt_fnt])
@@ -561,7 +696,7 @@ def make_proof(name: str):
         glyph_dict = _build_svg(print_pages)
         if glyph_dict.__class__.__name__ == "tuple":
             raise UniException([0, "C008", name, "字库 " + glyph_dict[0] + " 缺少 " + glyph_dict[1] + " 对应的字图。"])
-        glyph_dict[('', ())] = (None, None)
+        glyph_dict[("", ())] = (None, None)
         glyph_dict[((), ())] = (None, None)
 
         temp_dict = dict()

@@ -8,7 +8,12 @@ class Current:
     def files(dct: dict = None):
         if dct is None:
             if Current.project and Current.project.prj_rsc_info != None:
-                return Current.project.prj_rsc_info["upj"] + Current.project.prj_rsc_info["blk"] + Current.project.prj_rsc_info["fnt"] + Current.project.prj_rsc_info["att"]
+                return (
+                    Current.project.prj_rsc_info["upj"]
+                    + Current.project.prj_rsc_info["blk"]
+                    + Current.project.prj_rsc_info["fnt"]
+                    + Current.project.prj_rsc_info["att"]
+                )
             else:
                 return []
         else:

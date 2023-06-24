@@ -3,10 +3,10 @@ from functools import partial
 from json import dump
 from os.path import basename, exists, splitext
 
-from PySide2.QtCore import QEvent, QObject
-from PySide2.QtGui import QIcon
-from PySide2.QtUiTools import QUiLoader
-from PySide2.QtWidgets import QApplication, QFileDialog, QTreeWidgetItem
+from PySide6.QtCore import QEvent, QObject
+from PySide6.QtGui import QIcon
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtWidgets import QApplication, QFileDialog, QTreeWidgetItem
 
 import printer
 import tools
@@ -15,11 +15,10 @@ from new_project import Project
 from rsc_parser import Parser
 
 
-class Unipage():
-
+class Unipage:
     def __init__(self):
-        self.ui = QUiLoader().load('src/unipage.ui')
-        self.ui.setWindowIcon(QIcon('src/images/tree.png'))
+        self.ui = QUiLoader().load("src/unipage.ui")
+        self.ui.setWindowIcon(QIcon("src/images/tree.png"))
 
         self.ui.act_create.triggered.connect(self.create_project)
         self.ui.act_open.triggered.connect(self.open_project)
@@ -51,7 +50,15 @@ class Unipage():
         if Current.project:
             Current.unipage.ui.bar.setValue(50)
             fp = open(Current.project.prj_basic_info["project_file"], "w")
-            dump({"basic_info": Current.project.prj_basic_info, "rsc_info": Current.project.prj_rsc_info, "set_info": Current.project.prj_set_info, "blk_info": Current.project.prj_blk_info}, fp)
+            dump(
+                {
+                    "basic_info": Current.project.prj_basic_info,
+                    "rsc_info": Current.project.prj_rsc_info,
+                    "set_info": Current.project.prj_set_info,
+                    "blk_info": Current.project.prj_blk_info,
+                },
+                fp,
+            )
             fp.close()
             Current.unipage.ui.bar.setValue(0)
 
@@ -108,7 +115,7 @@ class Unipage():
             if files_url:
                 for file_url in files_url:
                     file_url = file_url.toLocalFile()
-                    dest_url = Current.project.prj_basic_info["project_dir"] + '/' + basename(file_url)
+                    dest_url = Current.project.prj_basic_info["project_dir"] + "/" + basename(file_url)
                     tools.input_resource(file_url, dest_url, 0, None, False)
 
     def remove_resources(self):
@@ -217,14 +224,14 @@ class Unipage():
         if object is self.new_ui.tree_file:
             if event.type() == QEvent.DragEnter and Current.project:
                 file_exts = set([splitext(file)[1] for file in event.mimeData().urls])
-                accept_exts = set(['.blk', '.att', '.ttf', '.otf'])
+                accept_exts = set([".blk", ".att", ".ttf", ".otf"])
                 if file_exts - accept_exts == file_exts:
                     event.ignore()
                 else:
                     event.accept()
             if event.type() == QEvent.Drop and Current.project:
                 for file_url in event.mimeData().urls:
-                    dest_url = Current.project.prj_basic_info["project_dir"] + '/' + basename(file_url)
+                    dest_url = Current.project.prj_basic_info["project_dir"] + "/" + basename(file_url)
                     tools.input_resource(file_url, dest_url, 0, None, False)
 
 
@@ -232,4 +239,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     Current.unipage = Unipage()
     Current.unipage.ui.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
