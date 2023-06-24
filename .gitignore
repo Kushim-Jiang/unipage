@@ -1,8 +1,6 @@
 svg/
 pdf/
-_ws2017/
-_ws2021/
-_main/
+temp/
 .vscode/
 .qt_for_python/
 
