@@ -1,7 +1,7 @@
-fonttools==4.38.0
-PySide6==6.4.1
-PySide6-Addons==6.4.1
-PySide6-Essentials==6.4.1
-numpy==1.24.1
-reportlab==3.6.12
-svglib==1.5.1
+fonttools>=4.38.0
+PySide6>=6.4.1
+PySide6-Addons>=6.4.1
+PySide6-Essentials>=6.4.1
+numpy>=1.24.1
+reportlab>=4.0.4
+svglib>=1.5.1

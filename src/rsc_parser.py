@@ -75,7 +75,7 @@ def _show_rs(rs: str) -> str | None:
 
     if "'" not in rs.split(".")[0] and '"' not in rs.split(".")[0]:
         if int(rs.split(".")[0]) <= 214 and int(rs.split(".")[0]) >= 1:
-            char_rs = chr(12031 + int(rs.split(".")[0]))
+            char_rs = chr(0x2EFF + int(rs.split(".")[0]))
             return char_rs + "　" + rs
         else:
             return None
@@ -205,7 +205,7 @@ class Parser:
             elif exc.__class__.__name__ == "UniException":
                 bug.append(exc.arg)
             else:
-                bug.append([0, "C000", basename(url), exc + ": " + line.strip().encode("unicode_escape").decode("utf-8")])
+                bug.append([0, "C000", basename(url), exc.__class__.__name__ + ": " + line.strip().encode("unicode_escape").decode("utf-8")])
             pass
         finally:
             fp.close()
@@ -220,11 +220,14 @@ class Parser:
 
             while line.lower() != "# eof":
                 if line and line[0] == "#":
-                    inf_type = line[1:].strip()
+                    blk_range, blk_name, inf_type = line[1:].strip().split(";")
+                    blk_range, blk_name, inf_type = blk_range.strip(), blk_name.strip(), inf_type.strip()
+                    blk_init, blk_fina = blk_range.strip().split("..")
+                    blk_init, blk_fina = int(blk_init.strip(), 16), int(blk_fina.strip(), 16)
                     set_cont = {}
                     lst_cont = []
 
-                    if inf_type not in ["RS", "NL"]:
+                    if inf_type not in ["RSH", "RSW", "NL"]:
                         raise ValueError
 
                     line = fp.readline().strip()
@@ -239,7 +242,7 @@ class Parser:
                             cnt.append(cpy_dict)
                             break
                         elif line:
-                            if inf_type == "RS":
+                            if inf_type == "RSH":
                                 # U+4E2C \t 90.0 90'.0 => "20012": ["90.0", "90'.0"]
                                 rs_cp, rs_values = line.strip().split("\t")
                                 rs_cp = int(rs_cp.strip().upper().replace("U+", ""), 16)
@@ -254,6 +257,21 @@ class Parser:
                                         bug.append([1, "J004", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     _, _ = rs_value.strip().split(".")
                                 set_cont.update({str(rs_cp): rs_values})
+                            elif inf_type == "RSW":
+                                # 00001 \t 90.0 90'.0 => "20000": ["90.0", "90'.0"]
+                                rs_sq, rs_values = line.strip().split("\t")
+                                rs_sq = int(rs_sq)
+                                rs_values = rs_values.strip().split(" ")
+                                for rs_value in rs_values:
+                                    if (
+                                        match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()) == None
+                                        or match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()).group() != rs_value
+                                    ):
+                                        raise UniException([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
+                                    if _show_rs(rs_value) == None:
+                                        bug.append([1, "J004", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
+                                    _, _ = rs_value.strip().split(".")
+                                set_cont.update({str(blk_init + rs_sq - 1): rs_values})
                             elif inf_type == "NL":
                                 name_line: str = line.strip()
                                 if name_line.startswith("@"):

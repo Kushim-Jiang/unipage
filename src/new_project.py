@@ -38,12 +38,12 @@ class Project:
         if project_dir:
             self.new_ui.line_url.setText(project_dir)
             if _wash_file(self.new_ui.line_name.text()):
-                self.new_ui.line_file.setText(project_dir + "/" + _wash_file(self.new_ui.line_name.text()) + ".upj")
+                self.new_ui.line_file.setText(f"{project_dir}/{_wash_file(self.new_ui.line_name.text())}.upj")
                 self.new_ui.btn_box.setEnabled(True)
 
     def update(self):
         if _wash_file(self.new_ui.line_name.text()) and self.new_ui.line_url.text():
-            self.new_ui.line_file.setText(self.new_ui.line_url.text() + "/" + _wash_file(self.new_ui.line_name.text()) + ".upj")
+            self.new_ui.line_file.setText(f"{self.new_ui.line_url.text()}/{_wash_file(self.new_ui.line_name.text())}.upj")
             self.new_ui.btn_box.setEnabled(True)
         else:
             self.new_ui.line_file.setText("")

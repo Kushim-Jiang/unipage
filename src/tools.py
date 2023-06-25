@@ -116,16 +116,27 @@ def parse_resource(it: QTreeWidgetItem):
 
 
 def show_bugs(bugs: list):
+    FIRST = 0
+
+    ERROR = 0
+    WARNING = 1
+    INFORMATION = 2
+
+    TYPE = 0
+    CODE = 1
+    BASENAME = 2
+    LINE = 3
+
     # bug = [bug_type, bug_code, basename, line]
-    errs = [bug for bug in bugs if bug[0] == 0]
-    wars = [bug for bug in bugs if bug[0] == 1]
-    infs = [bug for bug in bugs if bug[0] == 2]
+    errs = [bug for bug in bugs if bug[TYPE] == ERROR]
+    wars = [bug for bug in bugs if bug[TYPE] == WARNING]
+    infs = [bug for bug in bugs if bug[TYPE] == INFORMATION]
     if errs:
         top_item = QTreeWidgetItem()
-        top_item.setText(0, errs[0][2])
+        top_item.setText(0, errs[FIRST][BASENAME])
         Current.unipage.ui.tree_err.addTopLevelItem(top_item)
         for index in range(Current.unipage.ui.tree_err.topLevelItemCount()):
-            if Current.unipage.ui.tree_err.topLevelItem(index).text(0) == errs[0][2]:
+            if Current.unipage.ui.tree_err.topLevelItem(index).text(0) == errs[FIRST][BASENAME]:
                 for err in errs:
                     child_item = QTreeWidgetItem()
                     child_item.setText(0, err[1])
@@ -135,10 +146,10 @@ def show_bugs(bugs: list):
     Current.unipage.ui.tree_err.expandAll()
     if wars:
         top_item = QTreeWidgetItem()
-        top_item.setText(0, wars[0][2])
+        top_item.setText(0, wars[FIRST][2])
         Current.unipage.ui.tree_war.addTopLevelItem(top_item)
         for index in range(Current.unipage.ui.tree_war.topLevelItemCount()):
-            if Current.unipage.ui.tree_war.topLevelItem(index).text(0) == wars[0][2]:
+            if Current.unipage.ui.tree_war.topLevelItem(index).text(0) == wars[FIRST][BASENAME]:
                 for war in wars:
                     child_item = QTreeWidgetItem()
                     child_item.setText(0, war[1])
@@ -148,10 +159,10 @@ def show_bugs(bugs: list):
     Current.unipage.ui.tree_war.expandAll()
     if infs:
         top_item = QTreeWidgetItem()
-        top_item.setText(0, infs[0][2])
+        top_item.setText(0, infs[FIRST][BASENAME])
         Current.unipage.ui.tree_inf.addTopLevelItem(top_item)
         for index in range(Current.unipage.ui.tree_inf.topLevelItemCount()):
-            if Current.unipage.ui.tree_inf.topLevelItem(index).text(0) == infs[0][2]:
+            if Current.unipage.ui.tree_inf.topLevelItem(index).text(0) == infs[FIRST][BASENAME]:
                 for inf in infs:
                     child_item = QTreeWidgetItem()
                     child_item.setText(0, inf[1])
@@ -166,15 +177,15 @@ def count_bugs():
     count = 0
     for index in range(Current.unipage.ui.tree_err.topLevelItemCount()):
         count += Current.unipage.ui.tree_err.topLevelItem(index).childCount()
-    Current.unipage.ui.tab.setTabText(0, "错误 [" + str(count) + "]")
+    Current.unipage.ui.tab.setTabText(0, f"错误 [{str(count)}]")
     count = 0
     for index in range(Current.unipage.ui.tree_war.topLevelItemCount()):
         count += Current.unipage.ui.tree_war.topLevelItem(index).childCount()
-    Current.unipage.ui.tab.setTabText(1, "警告 [" + str(count) + "]")
+    Current.unipage.ui.tab.setTabText(1, f"警告 [{str(count)}]")
     count = 0
     for index in range(Current.unipage.ui.tree_inf.topLevelItemCount()):
         count += Current.unipage.ui.tree_inf.topLevelItem(index).childCount()
-    Current.unipage.ui.tab.setTabText(2, "信息 [" + str(count) + "]")
+    Current.unipage.ui.tab.setTabText(2, f"信息 [{str(count)}]")
 
 
 def build_blocks():
@@ -372,7 +383,7 @@ def _build_setting(blk: dict, flag: bool):
     if temp_blk["blk_type"] in ["H", "W"]:
         for index_src in range(12):
             child_item = QTreeWidgetItem()
-            child_item.setText(0, _subsrc_name(index_src) + " 源字库")
+            child_item.setText(0, f"{_subsrc_name(index_src)} 源字库")
             child_item.setText(1, "◁　" + temp_blk["blk_cont"]["font"][index_src][1] + "　▷")
             font_item.addChild(child_item)
     elif temp_blk["blk_type"] == "V":

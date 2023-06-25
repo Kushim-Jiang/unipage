@@ -1,5 +1,4 @@
 class Current:
-    # Unipage 主界面，数据类型 Unipage
     unipage = None
     project = None
     tmp_project = None
