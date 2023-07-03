@@ -1,4 +1,3 @@
-import code
 from copy import deepcopy
 from json import load
 from os.path import basename
@@ -268,8 +267,9 @@ class Parser:
                                         or match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()).group() != rs_value
                                     ):
                                         raise UniException([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
+                                    # radical not exist: decide to treat as error
                                     if _show_rs(rs_value) == None:
-                                        bug.append([1, "J004", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
+                                        bug.append([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     _, _ = rs_value.strip().split(".")
                                 set_cont.update({str(blk_init + rs_sq - 1): rs_values})
                             elif inf_type == "NL":

@@ -144,11 +144,11 @@ def make_pdf(proof: dict):
             first_page.append(["the database.", 0, 11, 9, "Noto Sans Light"])
         first_page += [
             ["Disclaimer", 0, 23, 9, "Noto Sans Black"],
-            ["These charts are intended to show the distribution of the codespace and partial information of the", 0, 13, 9, "Noto Sans Light"],
-            ["characters only, and do not indicate the character set model and exact understanding of each", 0, 11, 9, "Noto Sans Light"],
-            ["character for the scripts involved. For a complete understanding of the use of the characters", 0, 11, 9, "Noto Sans Light"],
-            ["contained in this file, please consult the specification, the technical notes, the annexes", 0, 11, 9, "Noto Sans Light"],
-            ["or the proposals associated.", 0, 11, 9, "Noto Sans Light"],
+            ["These charts are intended to show the code point, the character name (if not inferable) and other", 0, 13, 9, "Noto Sans Light"],
+            ["partial information of the characters only, and do not indicate the character set model and exact", 0, 11, 9, "Noto Sans Light"],
+            ["understanding of each character for any scripts involved. For a complete understanding of the use", 0, 11, 9, "Noto Sans Light"],
+            ["of the characters contained in this file, please consult the specification, the technical notes,", 0, 11, 9, "Noto Sans Light"],
+            ["the annexes or the proposals associated.", 0, 11, 9, "Noto Sans Light"],
         ]
         first_page += [
             ["Fonts", 0, 23, 9, "Noto Sans Black"],
@@ -164,10 +164,11 @@ def make_pdf(proof: dict):
         first_page += [["", -30, 3, 9, "Noto Sans Light"]]
         first_page += [
             ["Terms of Use", 0, 23, 9, "Noto Sans Black"],
-            ["The code charts are compiled and printed by Unibook software, which does not retain copyright on", 0, 13, 9, "Noto Sans Light"],
-            ["the production process. The fonts and font data used in production of these code charts may NOT be", 0, 11, 9, "Noto Sans Light"],
-            ["extracted, or used in any other way in any product or publication, without permission or license", 0, 11, 9, "Noto Sans Light"],
-            ["granted by the typeface owner(s).", 0, 11, 9, "Noto Sans Light"],
+            ["The code charts are compiled and printed by Unipage software, maintained by Kushim Jiang in his", 0, 13, 9, "Noto Sans Light"],
+            ["public GitHub repository named Unipage, which does not retain copyright on the production process.", 0, 11, 9, "Noto Sans Light"],
+            ["The fonts and font data used in production of these code charts may NOT be extracted, or used in", 0, 11, 9, "Noto Sans Light"],
+            ["any other way in any product or publication, without permission or license granted by the typeface", 0, 11, 9, "Noto Sans Light"],
+            ["owner(s).", 0, 11, 9, "Noto Sans Light"],
         ]
 
         writer = (0, 0)
