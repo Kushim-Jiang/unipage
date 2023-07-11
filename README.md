@@ -12,13 +12,15 @@
 ### Block Information
 
 ```plaintext
-# {initial code point end with 0}..{final code point end with F}; {block name}; {W for Working set, H for Han, C for non-Han Character (not inplemented)}
+# {initial code point end with 0}..{final code point end with F}; {block name}; {W for Working set, H for Han, V for IVD, C for non-Han Character (not inplemented)}
 
 {
 if is W for Working set,
 {serial number} \t {source reference} \t {code point in font file, default for assigned code point calculated from initial code point and serial number}
 else if is H for Han,
 format in Unihan_IRGSources.txt
+else if is V for IVD,
+{character code point} space {variation selector code point} \t {collection name} \t {source reference}
 else if is C for non-Han Character,
 {code point} \t {character name}
 }
@@ -61,6 +63,21 @@ U+4E00 \t kIRG_KSource \t K0-6C69
 111E4 \t SINHALA ARCHAIC DIGIT FOUR
 111E5 \t SINHALA ARCHAIC DIGIT FIVE
 111E6 \t SINHALA ARCHAIC DIGIT SIX
+
+# eof
+```
+
+```plaintext
+# 4E00..9FFF; Obsolete Draft of TH-Ming; V
+
+4E00 E01E5 \t PanCJK \t 4E00-V
+4E00 E01E6 \t PanCJK \t 4E00-KP
+4E00 E01E7 \t PanCJK \t 4E00-K
+4E00 E01E8 \t PanCJK \t 4E00-J
+4E01 E01E5 \t PanCJK \t 4E01-V
+4E01 E01E6 \t PanCJK \t 4E01-KP
+4E01 E01E7 \t PanCJK \t 4E01-K
+4E01 E01E8 \t PanCJK \t 4E01-J
 
 # eof
 ```
