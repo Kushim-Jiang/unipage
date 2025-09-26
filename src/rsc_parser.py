@@ -2,6 +2,7 @@ from copy import deepcopy
 from json import load
 from os.path import basename
 from re import match
+import re
 
 
 def _subsrc_name(source: int) -> str:
@@ -241,6 +242,7 @@ class Parser:
                             cnt.append(cpy_dict)
                             break
                         elif line:
+                            pattern = re.compile(r"[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}")
                             if inf_type == "RSH":
                                 # U+4E2C \t 90.0 90'.0 => "20012": ["90.0", "90'.0"]
                                 rs_cp, rs_values = line.strip().split("\t")
@@ -248,8 +250,8 @@ class Parser:
                                 rs_values = rs_values.strip().split(" ")
                                 for rs_value in rs_values:
                                     if (
-                                        match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()) == None
-                                        or match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()).group() != rs_value
+                                        pattern.match(rs_value.strip()) == None
+                                        or pattern.match(rs_value.strip()).group() != rs_value
                                     ):
                                         raise UniException([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     if _show_rs(rs_value) == None:
@@ -263,8 +265,8 @@ class Parser:
                                 rs_values = rs_values.strip().split(" ")
                                 for rs_value in rs_values:
                                     if (
-                                        match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()) == None
-                                        or match("[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}", rs_value.strip()).group() != rs_value
+                                        pattern.match(rs_value.strip()) == None
+                                        or pattern.match(rs_value.strip()).group() != rs_value
                                     ):
                                         raise UniException([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     # radical not exist: decide to treat as error
