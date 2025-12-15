@@ -244,17 +244,17 @@ class Parser:
                         elif line:
                             pattern = re.compile(r"[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}")
                             if inf_type == "RSH":
-                                # U+4E2C \t 90.0 90'.0 => "20012": ["90.0", "90'.0"]
-                                rs_cp, rs_values = line.strip().split("\t")
+                                # U+4E2C \t kRSUnicode \t 90.0 90'.0 => "20012": ["90.0", "90'.0"]
+                                rs_cp, _, rs_values = line.strip().split("\t")
                                 rs_cp = int(rs_cp.strip().upper().replace("U+", ""), 16)
                                 rs_values = rs_values.strip().split(" ")
                                 for rs_value in rs_values:
                                     if (
-                                        pattern.match(rs_value.strip()) == None
+                                        pattern.match(rs_value.strip()) is None
                                         or pattern.match(rs_value.strip()).group() != rs_value
                                     ):
                                         raise UniException([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
-                                    if _show_rs(rs_value) == None:
+                                    if _show_rs(rs_value) is None:
                                         bug.append([1, "J004", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     _, _ = rs_value.strip().split(".")
                                 set_cont.update({str(rs_cp): rs_values})
@@ -265,12 +265,12 @@ class Parser:
                                 rs_values = rs_values.strip().split(" ")
                                 for rs_value in rs_values:
                                     if (
-                                        pattern.match(rs_value.strip()) == None
+                                        pattern.match(rs_value.strip()) is None
                                         or pattern.match(rs_value.strip()).group() != rs_value
                                     ):
                                         raise UniException([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     # radical not exist: decide to treat as error
-                                    if _show_rs(rs_value) == None:
+                                    if _show_rs(rs_value) is None:
                                         bug.append([0, "C002", basename(url), line.strip().encode("unicode_escape").decode("utf-8")])
                                     _, _ = rs_value.strip().split(".")
                                 set_cont.update({str(blk_init + rs_sq - 1): rs_values})

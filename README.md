@@ -116,11 +116,11 @@ Examples (`\t` should be replaced with a real tab):
 ```plaintext
 # 30000..3134F; CJK Unified Ideographs Extension G; RSH
 
-U+30000 \t 1.1
-U+30001 \t 1.2
-U+30002 \t 1.2
-U+30003 \t 1.2
-U+30004 \t 1.2
+U+30000 \t kRSUnicode \t 1.1
+U+30001 \t kRSUnicode \t 1.2
+U+30002 \t kRSUnicode \t 1.2
+U+30003 \t kRSUnicode \t 1.2
+U+30004 \t kRSUnicode \t 1.2
 
 # eof
 ```
