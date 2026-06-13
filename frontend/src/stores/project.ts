@@ -54,6 +54,29 @@ export const compiledCount: Readable<number> = derived(resources, ($r) => {
          ($r.attribute || []).filter((r: any) => r[1] === 2).length;
 });
 
+// ── Network errors (connection, HTTP 4xx/5xx) ─────────────────────
+
+export interface NetworkError {
+  id: number;
+  message: string;
+  timestamp: Date;
+  status?: number;
+}
+
+export const networkErrors: Writable<NetworkError[]> = writable([]);
+let _errId = 0;
+
+export function pushNetworkError(message: string, status?: number): void {
+  networkErrors.update((arr) => {
+    const entry: NetworkError = { id: ++_errId, message, timestamp: new Date(), status };
+    return [...arr.slice(-49), entry]; // keep last 50
+  });
+}
+
+export function clearNetworkErrors(): void {
+  networkErrors.set([]);
+}
+
 /** Reset all stores (on project close) */
 export function resetAllStores(): void {
   projectOpen.set(false);

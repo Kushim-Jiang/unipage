@@ -284,14 +284,7 @@ def _dispatch_blk_line(blk_type: str, cont: dict, line: str, blk_init: int, path
     }
     parser = parsers.get(blk_type)
     if parser:
-        cp_val = parser(cont, line, blk_init, path, bugs)
-        # Range check for non-W types
-        if blk_type != "W" and cp_val is not None:
-            _check_cp_range(cp_val, cont, blk_init, blk_init, path, line, bugs)
-
-
-def _check_cp_range(cp_val, cont, blk_init, blk_fina, path, line, bugs) -> None:
-    pass  # Range check integrated into each parser
+        parser(cont, line, blk_init, path, bugs)
 
 
 def _parse_block_c_line(cont: dict, line: str, *args) -> int | None:
@@ -382,10 +375,10 @@ def parse_attribute_file(path: str) -> tuple[list[dict], list[BugEntry]]:
                     set_cont, lst_cont = {}, []
 
                 # #range;name;type
-                _, blk_range, section_name, inf_type = line.split(";")
-                blk_range = blk_range.strip()
-                section_name = section_name.strip()
-                inf_type = inf_type.strip()
+                parts = line[1:].strip().split(";")
+                _blk_range = parts[0].strip()
+                section_name = parts[1].strip()
+                inf_type = parts[2].strip()
 
                 if inf_type not in ("RSH", "RSW", "NL"):
                     raise ValueError

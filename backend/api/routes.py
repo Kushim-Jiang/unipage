@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import os
 import threading
-from os.path import basename, exists, splitext
+from os.path import abspath, basename, exists, splitext
 from typing import Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend.chart_generation.layout import make_proof
 from backend.chart_generation.pdf_builder import generate_pdf
-from backend.file_management.parser import parse_project_file, parse_block_file, parse_attribute_file, detect_tsv_type
+from backend.file_management.parser import detect_tsv_type, parse_attribute_file, parse_block_file, parse_project_file
 from backend.file_management.resource_manager import (
     build_blocks,
     build_settings,
@@ -61,6 +61,7 @@ class CycleOptionRequest(BaseModel):
     name: str
     field: str
     forward: bool
+    source_index: Optional[int] = None
 
 
 class ColourToggleRequest(BaseModel):
@@ -83,6 +84,12 @@ class BugReport(BaseModel):
 router = APIRouter(prefix="/api")
 
 
+def _require_project() -> None:
+    """Ensure a project is open; raise 400 otherwise."""
+    if not STATE.has_project:
+        raise HTTPException(400, "B002: No project open.")
+
+
 # ── Project CRUD ────────────────────────────────────────────────────
 
 
@@ -90,7 +97,7 @@ router = APIRouter(prefix="/api")
 def create_project(info: ProjectInfo):
     """Create a new project."""
     if STATE.has_project:
-        raise HTTPException(400, "A project is already open. Close it first.")
+        raise HTTPException(400, "B001: A project is already open. Close it first.")
 
     from backend.models.dataclasses import ProjectInfo as ProjectInfoDC
 
@@ -116,7 +123,7 @@ def create_project(info: ProjectInfo):
 def open_project(path: str):
     """Open an existing .json project file by path."""
     if STATE.has_project:
-        raise HTTPException(400, "A project is already open. Close it first.")
+        raise HTTPException(400, "B001: A project is already open. Close it first.")
     if not exists(path):
         raise HTTPException(404, f"File not found: {path}")
     return _do_open(path)
@@ -126,7 +133,7 @@ def open_project(path: str):
 def load_project(data: dict):
     """Open a project from raw JSON content (no filesystem path needed)."""
     if STATE.has_project:
-        raise HTTPException(400, "A project is already open. Close it first.")
+        raise HTTPException(400, "B001: A project is already open. Close it first.")
     if not data or "basic_info" not in data:
         raise HTTPException(400, "Invalid project file: missing 'basic_info'")
     try:
@@ -158,8 +165,7 @@ def _do_open(path: str):
 @router.post("/project/save")
 def save_project():
     """Save the current project."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     STATE.project.save()
     return {"status": "ok"}
 
@@ -188,20 +194,19 @@ def project_status():
 @router.get("/resources")
 def list_resources():
     """List all resources in the current project."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     return STATE.project.resources.to_dict()
 
 
 @router.post("/resources/import")
 def import_file(path: str):
     """Import a resource file (copy into project dir)."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     proj = STATE.project
     dest = f"{proj.project_info.project_dir}/{basename(path)}"
     try:
         import_resource(proj, path, dest, 0)
+        proj.save()
         return {"status": "ok", "dest": dest}
     except (ValueError, FileExistsError) as exc:
         raise HTTPException(400, str(exc))
@@ -210,8 +215,7 @@ def import_file(path: str):
 @router.post("/resources/upload")
 async def upload_file(file: UploadFile = File(...)):
     """Upload a resource file via multipart."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     proj = STATE.project
     dest = f"{proj.project_info.project_dir}/{file.filename}"
     content = await file.read()
@@ -219,6 +223,7 @@ async def upload_file(file: UploadFile = File(...)):
         fp.write(content)
     try:
         import_resource(proj, None, dest, 0)
+        proj.save()
         return {"status": "ok", "dest": dest}
     except (ValueError, FileExistsError) as exc:
         raise HTTPException(400, str(exc))
@@ -227,9 +232,9 @@ async def upload_file(file: UploadFile = File(...)):
 @router.delete("/resources")
 def delete_resource(path: str):
     """Remove a resource from the project."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     if remove_resource(STATE.project, path):
+        STATE.project.save()
         return {"status": "ok"}
     raise HTTPException(404, f"Resource not found: {path}")
 
@@ -237,8 +242,7 @@ def delete_resource(path: str):
 @router.post("/resources/parse")
 def parse_resources():
     """Parse all compiled-but-unparsed block and attribute resources (background thread with progress)."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
 
     proj = STATE.project
     targets = [
@@ -269,9 +273,6 @@ def parse_resources():
         STATE.parse_progress = 100.0
         STATE.parse_done = True
 
-    STATE.parse_progress = 0.0
-    STATE.parse_done = False
-    STATE.parse_bugs = None
     t = threading.Thread(target=run, daemon=True)
     t.start()
     return {"status": "started", "total": total}
@@ -281,9 +282,9 @@ def parse_resources():
 def parse_progress():
     """Poll current parse progress."""
     return {
-        "progress": int(getattr(STATE, "parse_progress", 0)),
-        "done": getattr(STATE, "parse_done", False),
-        "bugs": getattr(STATE, "parse_bugs", None),
+        "progress": int(STATE.parse_progress),
+        "done": STATE.parse_done,
+        "bugs": STATE.parse_bugs,
     }
 
 
@@ -312,16 +313,14 @@ def parse_one_resource(path: str):
 @router.get("/blocks")
 def list_blocks():
     """Return all parsed block information."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     return [b.to_dict() for b in STATE.project.blocks]
 
 
 @router.get("/blocks/{name}")
 def get_block(name: str):
     """Return a single block by name."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     blk = STATE.project.get_block(name)
     if blk is None:
         raise HTTPException(404, f"Block not found: {name}")
@@ -334,16 +333,14 @@ def get_block(name: str):
 @router.get("/settings")
 def list_settings():
     """Return all block print settings."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     return [s.to_dict() for s in STATE.project.settings]
 
 
 @router.post("/settings/cycle")
 def cycle_option(req: CycleOptionRequest):
     """Cycle a setting option (prev/next)."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     proj = STATE.project
     setting = proj.get_setting(req.name)
     if setting is None:
@@ -351,7 +348,6 @@ def cycle_option(req: CycleOptionRequest):
 
     _SETTING_KEYS = ["print", "column", "format", "title"]
     _SETTING_RANGES = [2, 4, 3, 2]
-    _FONT_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
     delta = 1 if req.forward else -1
     cont = setting.content
@@ -363,19 +359,28 @@ def cycle_option(req: CycleOptionRequest):
     elif req.field == "font":
         n_fonts = len(proj.resources.font) + 1
         if bt in ("V", "C"):
-            cont["font"][0] = (cont["font"][0] + delta) % n_fonts
+            new_idx = (cont["font"][0] + delta) % n_fonts
+            cont["font"][0] = new_idx
+            cont["font"][1] = proj.resources.font[new_idx - 1].basename if new_idx > 0 else "(none)"
+        elif req.source_index is not None:
+            si = req.source_index
+            new_idx = (cont["font"][si][0] + delta) % n_fonts
+            cont["font"][si][0] = new_idx
+            cont["font"][si][1] = proj.resources.font[new_idx - 1].basename if new_idx > 0 else "(none)"
         else:
             for i in range(12):
-                cont["font"][i][0] = (cont["font"][i][0] + delta) % n_fonts
+                new_idx = (cont["font"][i][0] + delta) % n_fonts
+                cont["font"][i][0] = new_idx
+                cont["font"][i][1] = proj.resources.font[new_idx - 1].basename if new_idx > 0 else "(none)"
 
+    proj.save()
     return {"status": "ok", "setting": setting.to_dict()}
 
 
 @router.post("/settings/colour-toggle")
 def toggle_colour(req: ColourToggleRequest):
     """Toggle yellow/blue marking on a codepoint."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
     proj = STATE.project
     setting = proj.get_setting(req.name)
     if setting is None:
@@ -387,6 +392,7 @@ def toggle_colour(req: ColourToggleRequest):
     else:
         cont[req.colour].append(req.codepoint)
 
+    proj.save()
     return {"status": "ok", "setting": setting.to_dict()}
 
 
@@ -396,8 +402,7 @@ def toggle_colour(req: ColourToggleRequest):
 @router.post("/proof/check")
 def check_proof(name: str):
     """Check a block and generate a proof. Returns bugs and proof status."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
 
     proof, bugs = make_proof(name)
     has_err = any(b.severity == 0 for b in bugs)
@@ -411,8 +416,7 @@ def check_proof(name: str):
 @router.post("/proof/generate")
 def generate_pdf_proof(name: str):
     """Generate the PDF for a block's proof."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
 
     proof, bugs = make_proof(name)
     if any(b.severity == 0 for b in bugs):
@@ -431,12 +435,12 @@ def generate_pdf_proof(name: str):
 @router.post("/proof/check-all")
 def check_all_proofs():
     """Check all printable blocks (background thread with progress)."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
 
     proj = STATE.project
     targets = [s for s in proj.settings if s.content.get("print") == 1]
     total = len(targets)
+    STATE.check_progress = 0.0
     STATE.check_progress = 0.0
     STATE.check_done = False
     STATE.check_bugs = None
@@ -456,9 +460,6 @@ def check_all_proofs():
         STATE.check_progress = 100.0
         STATE.check_done = True
 
-    STATE.check_progress = 0.0
-    STATE.check_done = False
-    STATE.check_bugs = None
     t = threading.Thread(target=run, daemon=True)
     t.start()
     return {"status": "started", "total": total}
@@ -468,24 +469,24 @@ def check_all_proofs():
 def check_progress():
     """Poll current check-all progress."""
     return {
-        "progress": int(getattr(STATE, "check_progress", 0)),
-        "done": getattr(STATE, "check_done", False),
-        "bugs": getattr(STATE, "check_bugs", None),
-        "passing_count": len(getattr(STATE, "proofs", [])),
+        "progress": int(STATE.check_progress),
+        "done": STATE.check_done,
+        "bugs": STATE.check_bugs,
+        "passing_count": len(STATE.proofs),
     }
 
 
 @router.post("/proof/generate-all")
 def generate_all_pdf():
     """Generate PDF for all cached proofs (stores progress in STATE for polling)."""
-    if not STATE.has_project:
-        raise HTTPException(400, "No project open.")
+    _require_project()
 
     proj = STATE.project
     pdf_dir = f"{proj.project_info.project_dir}/pdf/"
     proofs = list(STATE.proofs)
     total = len(proofs)
     STATE.pdf_progress = 0.0
+    STATE.pdf_results = None
 
     def run():
         results = []
@@ -500,8 +501,6 @@ def generate_all_pdf():
         STATE.pdf_results = results
         STATE.pdf_progress = 100.0
 
-    STATE.pdf_results = None
-    STATE.pdf_progress = 0.0
     t = threading.Thread(target=run, daemon=True)
     t.start()
     return {"status": "started", "total": total}
@@ -511,7 +510,31 @@ def generate_all_pdf():
 def generate_progress():
     """Poll current PDF generation progress."""
     return {
-        "progress": int(getattr(STATE, "pdf_progress", 0)),
-        "done": getattr(STATE, "pdf_results", None) is not None,
-        "results": getattr(STATE, "pdf_results", []),
+        "progress": int(STATE.pdf_progress),
+        "done": STATE.pdf_results is not None,
+        "results": STATE.pdf_results or [],
     }
+
+
+# ══════════════════════════════════════════════════════════════════
+# Utils
+# ══════════════════════════════════════════════════════════════════
+
+
+@router.post("/utils/resolve-folder")
+def resolve_folder(name: str = Body(..., embed=True)):
+    """Resolve a folder name to an absolute path on the server."""
+    return {"path": abspath(name)}
+
+
+@router.post("/utils/list-dirs")
+def list_dirs(path: str = Body(..., embed=True)):
+    """List subdirectories under *path*. Returns parent and child dirs."""
+    import os
+
+    try:
+        dirs = sorted(e.name for e in os.scandir(path) if e.is_dir() and not e.name.startswith("."))
+    except (PermissionError, FileNotFoundError, NotADirectoryError):
+        dirs = []
+    parent = os.path.dirname(os.path.abspath(path))
+    return {"current": os.path.abspath(path), "parent": parent, "dirs": dirs}

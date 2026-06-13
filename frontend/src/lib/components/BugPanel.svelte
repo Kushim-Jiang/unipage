@@ -1,15 +1,33 @@
 <script lang="ts">
-  import { bugs } from '../../stores/project';
+  import { bugs, networkErrors } from '../../stores/project';
 
-  /** Combine errors, warnings, infos into one flat list sorted by severity */
+  /** Combine parse bugs + network errors into one flat list sorted by severity */
   $: allEntries = [
+    // Parse/check diagnostics (severity: error > warning > info)
     ...($bugs.errors || []).map((b: any) => ({ ...b, _severity: 'error' })),
     ...($bugs.warnings || []).map((b: any) => ({ ...b, _severity: 'warning' })),
     ...($bugs.infos || []).map((b: any) => ({ ...b, _severity: 'info' })),
+    // Network errors (always error severity, with NET-XXX code)
+    ...$networkErrors.map((ne) => ({
+      _severity: 'error' as const,
+      code: `NET-${String(ne.id).padStart(3, '0')}`,
+      label: ne.message,
+      file: ne.status ? `HTTP ${ne.status}` : '',
+      detail: '',
+    })),
   ];
 </script>
 
 <div class="bug-panel">
+  <div class="toolbar">
+    <span class="title">Diagnostics</span>
+    <span class="counts">
+      E{$bugs.counts?.errors ?? 0} / W{$bugs.counts?.warnings ?? 0} / I{$bugs.counts?.infos ?? 0}
+      {#if $networkErrors.length > 0}
+        <span class="net-count">+ NET:{$networkErrors.length}</span>
+      {/if}
+    </span>
+  </div>
   <div class="list">
     {#if allEntries.length > 0}
       {#each allEntries as bug}
@@ -31,6 +49,10 @@
 
 <style>
   .bug-panel { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 0.2rem 0.5rem; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; font-size: 0.75rem; flex-shrink: 0; }
+  .title { font-weight: bold; color: #2c3e50; }
+  .counts { color: #95a5a6; }
+  .net-count { color: #e74c3c; margin-left: 0.3rem; font-weight: bold; }
   .list { flex: 1; overflow-y: auto; font-size: 0.8rem; min-height: 0; }
   .entry { padding: 0.2rem 0.4rem; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 0.3rem; }
   .entry.error { background: #fef0ef; }

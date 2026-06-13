@@ -4,6 +4,8 @@ const API_BASE = '/api';
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
+import { pushNetworkError } from '../stores/project';
+
 async function request<T = any>(method: string, path: string, body?: JsonValue): Promise<T> {
   const opts: RequestInit = {
     method,
@@ -16,11 +18,17 @@ async function request<T = any>(method: string, path: string, body?: JsonValue):
   try {
     res = await fetch(`${API_BASE}${path}`, opts);
   } catch {
-    throw new Error('Cannot connect to backend. Make sure the server is running on port 8001.');
+    const msg = 'F001: Cannot connect to backend.';
+    pushNetworkError(msg);
+    throw new Error(msg);
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+    const detail = err.detail || '';
+    // Preserve backend bug codes (B001, C006, etc.) if present
+    const msg = detail.match(/^[A-Z]\d{3}:/) ? detail : `F002: HTTP ${res.status}${detail ? ': ' + detail : ''}`;
+    pushNetworkError(msg, res.status);
+    throw new Error(msg);
   }
   return res.json();
 }
@@ -85,7 +93,13 @@ export async function uploadResource(file: File) {
     method: 'POST',
     body: formData,
   });
-  if (!res.ok) throw new Error((await res.json()).detail);
+  if (!res.ok) {
+    const err = await res.json();
+    const detail = err.detail || '';
+    const msg = detail.match(/^[A-Z]\d{3}:/) ? detail : `F002: HTTP ${res.status}${detail ? ': ' + detail : ''}`;
+    pushNetworkError(msg, res.status);
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -125,8 +139,8 @@ export function listSettings() {
   return get<any[]>('/settings');
 }
 
-export function cycleOption(name: string, field: string, forward: boolean) {
-  return post<{ status: string; setting: any }>('/settings/cycle', { name, field, forward });
+export function cycleOption(name: string, field: string, forward: boolean, sourceIndex?: number) {
+  return post<{ status: string; setting: any }>('/settings/cycle', { name, field, forward, source_index: sourceIndex });
 }
 
 export function toggleColour(name: string, codepoint: number, colour: string) {
@@ -167,4 +181,14 @@ export function startGenerateAll() {
 /** Poll current generation progress. */
 export function pollGenerateProgress() {
   return get<{ progress: number; done: boolean; results: any[] }>('/proof/generate-progress');
+}
+
+// ── Utils ────────────────────────────────────────────────────────
+
+export function resolveFolder(name: string) {
+  return post<{ path: string }>('/utils/resolve-folder', { name });
+}
+
+export function listDirs(path: string) {
+  return post<{ current: string; parent: string; dirs: string[] }>('/utils/list-dirs', { path });
 }

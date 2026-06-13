@@ -18,8 +18,17 @@ class _AppState:
     def __init__(self) -> None:
         self._project: Optional[Project] = None
         self._proofs: list = []  # list[ProofLayout]
+        # PDF generation progress
         self.pdf_progress: float = 0.0
         self.pdf_results: Optional[list] = None
+        # Background parse progress
+        self.parse_progress: float = 0.0
+        self.parse_done: bool = False
+        self.parse_bugs: Optional[dict] = None
+        # Background check-all progress
+        self.check_progress: float = 0.0
+        self.check_done: bool = False
+        self.check_bugs: Optional[dict] = None
 
     # ── project ──────────────────────────────────────────────────
 
@@ -54,6 +63,14 @@ class _AppState:
         """Clear everything (close project)."""
         self._project = None
         self._proofs = []
+        self.pdf_progress = 0.0
+        self.pdf_results = None
+        self.parse_progress = 0.0
+        self.parse_done = False
+        self.parse_bugs = None
+        self.check_progress = 0.0
+        self.check_done = False
+        self.check_bugs = None
 
 
 # Singleton — import this from anywhere in the backend.

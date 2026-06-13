@@ -3,8 +3,9 @@ cd /d "%~dp0"
 
 :: Kill old processes silently
 taskkill /f /im uvicorn.exe >nul 2>&1
-for /f "tokens=2 delims= " %%P in ('tasklist /fi "imagename eq python.exe" /fo list ^| findstr /B "PID:"' 2^>nul) do (
-  tasklist /fi "pid eq %%P" /fo csv 2>nul | findstr /i "uvicorn" >nul && taskkill /f /pid %%P >nul 2>&1
+:: Kill any python process still listening on port 8001 (backend)
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":8001 " ^| findstr "LISTENING" 2^>nul') do (
+  taskkill /f /pid %%P >nul 2>&1
 )
 taskkill /f /im node.exe >nul 2>&1
 

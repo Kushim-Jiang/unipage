@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-from json import dump
+from json import dumps
 from os import makedirs
 from os.path import basename, exists, join, splitext
-from re import sub as _sub
+from re import sub as _sub, subn
 from typing import Optional
 
-from backend.models.dataclasses import (
-    BlockInfo,
-    BlockSetting,
-    ProjectInfo,
-    ResourceCollection,
-    ResourceEntry,
-)
+from backend.models.dataclasses import BlockInfo, BlockSetting, ProjectInfo, ResourceCollection, ResourceEntry
 
 
 def sanitize_filename(name: str) -> str:
@@ -51,22 +45,6 @@ def _resource_paths(resources: dict) -> list[str]:
             + resources.get("attribute", [])
         )
     ]
-
-
-# ── Block / Setting record helpers ──────────────────────────────────
-
-_CHECK_STATES = ["uncompiled", "compile_failed", "compiled_ok"]
-
-_COLUMN_OPTIONS = ["2x6", "3x3", "4x2", "5x1"]
-_FORMAT_OPTIONS = ["right", "left", "center"]
-
-
-def _check_label(status: int) -> str:
-    return _CHECK_STATES[status]
-
-
-def _font_name(index: int, font_names: list[str]) -> str:
-    return (["(none)"] + font_names)[index]
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -129,8 +107,9 @@ class Project:
         parent = join(path, "..") if "/" in path else None
         if parent and not exists(parent):
             makedirs(parent, exist_ok=True)
+        raw = dumps(self.to_dict(), ensure_ascii=False, indent=2, separators=(",", ":"))
         with open(path, "w", encoding="utf-8") as fp:
-            dump(self.to_dict(), fp, ensure_ascii=False, indent=2)
+            fp.write(raw)
 
     @classmethod
     def load(cls, path: str) -> tuple[Project, list]:
@@ -157,7 +136,7 @@ class Project:
         check_status: int,
         parse_data: Optional[list] = None,
     ) -> str:
-        """Register a resource. Returns the extension key ('block', 'font', …)."""
+        """Register a resource. Returns the resource key ('project','block','font','attribute')."""
         from os import remove as os_remove
         from shutil import copyfile
 
@@ -174,8 +153,19 @@ class Project:
                 os_remove(dest_path)
             copyfile(src_path, dest_path)
 
+        # ── TSV type detection ──────────────────────────────────
+        # .tsv files can be either block or attribute — check header.
+        if ext == ".tsv" and exists(dest_path):
+            from backend.file_management.parser import detect_tsv_type
+
+            detected = detect_tsv_type(dest_path)
+            if detected == "attribute":
+                rsc_key = "attribute"
+            elif detected == "block":
+                rsc_key = "block"
+
         entry = ResourceEntry(basename(dest_path), check_status, dest_path, parse_data)
-        self.resources[rsc_key].append(entry)
+        getattr(self.resources, rsc_key).append(entry)
         return rsc_key
 
     def remove_resource_by_path(self, path: str) -> bool:

@@ -16,16 +16,15 @@
   let parsePct = 0;
   let checkPct = 0;
   let progressPct = 0;
-  let error: string | null = null;
 
   // ── Resizable splitter state ────────────────────────────────
   /** Column widths (pixels): left, center, right */
   let colWidths = [260, 0, 240]; // 0 = flex (auto)
-  let bottomHeight = 160;
   let dragging: 'h-left' | 'h-right' | 'v-bottom' | null = null;
-  let leftWidthSaved = 260; // saved width for left collapse/expand
-  let rightWidthSaved = 240; // saved width for right collapse/expand
-  let bottomHeightSaved = 160; // saved height for bottom collapse/expand
+  let leftWidthSaved = 260;
+  let rightWidthSaved = 240;
+  let bottomHeight = 80;
+  let bottomHeightSaved = 80;
   $: showSettings = colWidths[0] > 0;
   $: showResources = colWidths[2] > 0;
   $: showBottom = bottomHeight > 0;
@@ -48,7 +47,7 @@
         } else if (d === 'h-right') {
           colWidths[2] = Math.max(120, Math.min(500, startR - (ev.clientX - startX)));
         } else if (d === 'v-bottom') {
-          bottomHeight = Math.max(60, Math.min(500, startH - (ev.clientY - startY)));
+          bottomHeight = Math.max(20, Math.min(400, startH - (ev.clientY - startY)));
         }
         colWidths = [...colWidths];
       };
@@ -71,7 +70,7 @@
   });
 
   async function loadProjectData() {
-    loading = true; error = null;
+    loading = true;
     try {
       const [rsc, blk, stg] = await Promise.all([
         api.listResources(), api.listBlocks(), api.listSettings(),
@@ -80,12 +79,12 @@
       blocks.set(blk);
       settings.set(stg);
       projectOpen.set(true);
-    } catch (e: any) { error = e.message; }
+    } catch { /* error already in BottomBar */ }
     finally { loading = false; }
   }
 
   async function handleParse() {
-    parsing = true; parsePct = 0; error = null;
+    parsing = true; parsePct = 0;
     try {
       await api.startParseResources();
       while (true) {
@@ -98,12 +97,12 @@
           break;
         }
       }
-    } catch (e: any) { error = e.message; }
+    } catch { /* error already in BottomBar */ }
     finally { parsing = false; parsePct = 0; }
   }
 
   async function handleCheckAll() {
-    checking = true; checkPct = 0; error = null;
+    checking = true; checkPct = 0;
     try {
       await api.startCheckAll();
       while (true) {
@@ -116,12 +115,12 @@
           break;
         }
       }
-    } catch (e: any) { error = e.message; proofsPassed = false; }
+    } catch { proofsPassed = false; }
     finally { checking = false; checkPct = 0; }
   }
 
   async function handleGenerateAll() {
-    generating = true; progressPct = 0; error = null;
+    generating = true; progressPct = 0;
     try {
       await api.startGenerateAll();
       // Poll progress until done
@@ -131,13 +130,13 @@
         progressPct = p.progress;
         if (p.done) break;
       }
-    } catch (e: any) { error = e.message; }
+    } catch { /* error already in BottomBar */ }
     finally { generating = false; progressPct = 0; }
   }
 
   async function handleClose() {
     try { await api.closeProject(); resetAllStores(); }
-    catch (e: any) { error = e.message; }
+    catch { /* error already in BottomBar */ }
   }
 </script>
 
@@ -148,7 +147,7 @@
       <h1>Unipage</h1>
       <div class="top-buttons">
         {#if !$projectOpen}
-          <ProjectManager on:loaded={loadProjectData} />
+          <ProjectManager onloaded={loadProjectData} />
         {:else}
           <span class="project-name">{$projectInfo?.project_name ?? 'Untitled'}</span>
           <button class:parsing disabled={parsing} style={parsing ? `background-size:${parsePct}% 100%` : ''} on:click={handleParse}>Parse Resources</button>
@@ -158,7 +157,6 @@
         {/if}
       </div>
     </div>
-    {#if error}<div class="error-bar">{error}</div>{/if}
   </header>
 
   <!-- ═══ Main area: three columns + bottom panel ═══ -->
@@ -213,29 +211,29 @@
             {#if showResources}<ResourceTree />{/if}
           </div>
         </div>
-
-        <!-- Splitter top/bottom -->
-        <div class="splitter-zone-v">
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <div class="splitter-v" on:mousedown={startDrag('v-bottom')} role="separator"></div>
-          <button class="collapse-btn-v" class:collapsed={!showBottom} on:click={() => {
-            if (bottomHeight > 0) {
-              bottomHeightSaved = bottomHeight;
-              bottomHeight = 0;
-            } else {
-              bottomHeight = bottomHeightSaved;
-            }
-          }}>
-            {showBottom ? '▼' : '▲'}
-          </button>
-        </div>
-
-        <!-- Bottom: bug panel -->
-        <div class="col-bottom" style="height:{bottomHeight}px"><BugPanel /></div>
       </div>
     {:else if !loading}
       <div class="welcome"><h2>Welcome to Unipage</h2><p>Create or open a project to get started.</p></div>
     {/if}
+
+    <!-- Splitter for bottom bug-bar -->
+    <div class="splitter-zone-v">
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div class="splitter-v" on:mousedown={startDrag('v-bottom')} role="separator"></div>
+      <button class="collapse-btn-v" class:collapsed={!showBottom} on:click={() => {
+        if (bottomHeight > 0) {
+          bottomHeightSaved = bottomHeight;
+          bottomHeight = 0;
+        } else {
+          bottomHeight = bottomHeightSaved;
+        }
+      }}>
+        {showBottom ? '▼' : '▲'}
+      </button>
+    </div>
+
+    <!-- Bottom: bug panel (always visible) -->
+    <div class="bug-bar" style="height:{bottomHeight}px" class:collapsed={!showBottom}><BugPanel /></div>
   </main>
 </div>
 
@@ -269,11 +267,9 @@
     background-color: #3498db;
     transition: background-size 0.15s ease-out;
   }
-  .error-bar { font-size: 0.8rem; color: #e74c3c; padding: 0.2rem 0; }
-
   /* ── Main area: flex column, content row is a grid ── */
-  main { flex: 1; overflow: hidden; }
-  .main-area { display: flex; flex-direction: column; height: 100%; }
+  main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .main-area { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .content-row { display: grid; flex: 1; min-height: 0; gap: 0; }
 
   .col-left { overflow-y: auto; padding: 0.3rem; background: #fafafa; min-width: 0; }
@@ -281,9 +277,8 @@
   .col-center { overflow-y: auto; padding: 0.3rem; background: #fff; }
   .col-right { overflow-y: auto; padding: 0.3rem; background: #fafafa; min-width: 0; }
   .col-right.collapsed { padding: 0; overflow: hidden; }
-  .col-bottom { overflow-y: auto; background: #fff; flex-shrink: 0; }
 
-  /* ── Vertical splitter zone (splitter + collapse button) ── */
+  /* ── Splitter zones ─────────────────────── */
   .splitter-zone { position: relative; display: flex; justify-content: center; }
   .splitter-zone .collapse-btn {
     position: absolute;
@@ -299,7 +294,6 @@
     line-height: 1;
     transition: left 0.15s, transform 0.15s;
   }
-  /* Left splitter: expanded = right edge, collapsed = left edge */
   .splitter-left .collapse-btn {
     left: auto;
     right: 0;
@@ -312,7 +306,6 @@
     border-radius: 0 4px 4px 0;
     border-left: none;
   }
-  /* Right splitter: expanded = left edge, collapsed = right edge */
   .splitter-right .collapse-btn {
     left: 0;
     right: auto;
@@ -327,8 +320,14 @@
   }
   .splitter-zone .collapse-btn:hover { background: #ecf0f1; }
 
-  /* ── Horizontal splitter zone (v-splitter + collapse button) ── */
+  /* ── Splitters ──────────────────────────── */
+  .splitter-h { cursor: col-resize; background: #e0e0e0; transition: background 0.15s; height: 100%; flex: 1; }
+  .splitter-h:hover { background: #3498db; }
+
+  /* ── Bottom bar splitter (v-splitter + collapse button) ── */
   .splitter-zone-v { position: relative; height: 4px; flex-shrink: 0; }
+  .splitter-v { cursor: row-resize; height: 4px; width: 100%; background: #e0e0e0; transition: background 0.15s; }
+  .splitter-v:hover { background: #3498db; }
   .splitter-zone-v .collapse-btn-v {
     position: absolute;
     left: 50%;
@@ -336,39 +335,32 @@
     background: #fafafa;
     border: 1px solid #bdc3c7;
     border-radius: 4px;
-    padding: 0.15rem 0.3rem;
+    padding: 0.1rem 0.3rem;
     cursor: pointer;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: #7f8c8d;
     line-height: 1;
-    transition: top 0.15s, bottom 0.15s;
-  }
-  /* Expanded: button below splitter bottom edge (▼ = click to collapse down) */
-  .splitter-zone-v .collapse-btn-v {
-    top: 100%;
-    bottom: auto;
     transform: translateX(-50%);
+    top: 100%;
     margin-top: -1px;
     border-top: none;
     border-radius: 0 0 4px 4px;
   }
-  /* Collapsed: button above splitter top edge (▲ = click to expand up) */
   .splitter-zone-v .collapse-btn-v.collapsed {
     top: auto;
     bottom: 100%;
-    transform: translateX(-50%);
+    margin-top: 0;
     margin-bottom: -1px;
     border-bottom: none;
+    border-top: 1px solid #bdc3c7;
     border-radius: 4px 4px 0 0;
   }
   .splitter-zone-v .collapse-btn-v:hover { background: #ecf0f1; }
 
-  /* ── Splitters ──────────────────────────── */
-  .splitter-h { cursor: col-resize; background: #e0e0e0; transition: background 0.15s; height: 100%; flex: 1; }
-  .splitter-h:hover { background: #3498db; }
-  .splitter-v { cursor: row-resize; height: 4px; width: 100%; background: #e0e0e0; transition: background 0.15s; }
-  .splitter-v:hover { background: #3498db; }
-
   /* ── Welcome ─────────────────────────────── */
-  .welcome { text-align: center; padding: 4rem 2rem; color: #7f8c8d; }
+  .welcome { flex: 1; text-align: center; padding: 4rem 2rem; color: #7f8c8d; }
+
+  /* ── Bottom bug bar ──────────────────────── */
+  .bug-bar { flex-shrink: 0; border-top: 1px solid #e0e0e0; background: #fff; overflow: hidden; }
+  .bug-bar.collapsed { height: 0 !important; border-top: none; }
 </style>

@@ -208,7 +208,7 @@ def make_proof(block_name: str) -> tuple[Optional[ProofLayout], list[BugEntry]]:
 
     blk_type = blk_info.type
     if blk_type == "C":
-        return None, []  # C-type not yet supported
+        return None, [BugEntry(2, "G005", block_name, "C-type block not yet supported.")]
 
     c_count, g_count = get_column_config(blk_set, blk_type)
     c_index = 0
@@ -218,7 +218,7 @@ def make_proof(block_name: str) -> tuple[Optional[ProofLayout], list[BugEntry]]:
 
     cps = sorted((int(k) for k in blk_info.content.keys()), reverse=True)
     if not cps:
-        return None, []
+        return None, [BugEntry(1, "G001", block_name, "Empty block — no content codepoints.")]
     cps.append(cps[-1])  # sentinel
 
     bugs: list[BugEntry] = []

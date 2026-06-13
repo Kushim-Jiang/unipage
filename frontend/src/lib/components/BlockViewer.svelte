@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { blocks } from '../../stores/project';
+  import { blocks, pushNetworkError } from '../../stores/project';
   import * as api from '../api';
 
   let blockDataMap: Record<string, any> = {};
@@ -17,7 +17,7 @@
           blockDataMap[name] = data;
           blockDataMap = { ...blockDataMap };
         } catch (e: any) {
-          alert(e.message);
+          pushNetworkError(e.message);
         } finally {
           loadingMap[name] = false;
           loadingMap = { ...loadingMap };
@@ -35,8 +35,9 @@
     return `${n} (${n.toString(16).toUpperCase().padStart(4, '0')})`;
   }
 
-  function washOut(str: string) {
-    return str?.replace(/None, /g, '').replace(/, None/g, '') ?? '';
+  function formatVal(val: any): string {
+    const s = JSON.stringify(val, (_k, v) => v === null ? '-' : v);
+    return s.replace(/"/g, '');
   }
 </script>
 
@@ -59,7 +60,7 @@
               {#if cp !== 'names_list'}
                 <div class="entry">
                   <span class="cp">{formatCp(cp)}</span>
-                  <span class="val">{washOut(JSON.stringify(val))}</span>
+                  <span class="val">{formatVal(val)}</span>
                 </div>
               {/if}
             {/each}

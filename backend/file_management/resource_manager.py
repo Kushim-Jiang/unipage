@@ -9,28 +9,16 @@ from __future__ import annotations
 from os.path import splitext
 from typing import Optional
 
-from backend.file_management.parser import (
-    parse_block_file,
-    parse_attribute_file,
-    detect_tsv_type,
-    submitter_no,
-)
-from backend.file_management.validator import has_errors, BugEntry
+from backend.file_management.parser import detect_tsv_type, parse_attribute_file, parse_block_file, submitter_no
+from backend.file_management.validator import BugEntry, has_errors
 from backend.models.dataclasses import BlockInfo, BlockSetting
-from backend.models.project import Project, VALID_IMPORT_EXTS
+from backend.models.project import VALID_IMPORT_EXTS, Project
 
 # ── Status constants ────────────────────────────────────────────────
 
 UNCOMPILED = 0
 COMPILE_FAILED = 1
 COMPILED_OK = 2
-
-_CHECK_LABELS = {0: "Uncompiled", 1: "Compile Failed", 2: "Compiled"}
-
-
-def check_label(status: int) -> str:
-    return _CHECK_LABELS.get(status, "Unknown")
-
 
 # ── Resource import ─────────────────────────────────────────────────
 
@@ -45,7 +33,7 @@ def import_resource(
     """Import a resource file into the project. Returns the resource key."""
     ext = splitext(dest_path)[1].lower()
     if ext not in VALID_IMPORT_EXTS and ext != ".json":
-        raise ValueError(f"Unsupported file extension: {ext}")
+        raise ValueError(f"C011: Unsupported file extension: {ext}")
     return project.add_resource(src_path, dest_path, check_status, parse_data)
 
 
@@ -75,7 +63,7 @@ def parse_font_file(path: str) -> tuple[Optional[dict], list]:
         tables = set(font.keys())
         missing = required - tables
         if missing:
-            bugs.append(BugEntry(1, "C009", path, f"Missing required tables: {', '.join(sorted(missing))}"))
+            bugs.append(BugEntry(1, "B005", path, f"Missing required tables: {', '.join(sorted(missing))}"))
             return None, bugs
 
         # Extract metadata
@@ -140,7 +128,11 @@ def parse_and_update(project: Project, path: str) -> list:
     if has_errors(bugs):
         rsc.check_status = COMPILE_FAILED
     else:
-        rsc.parse_data = parsed
+        # Convert BlockInfo dataclass objects to dicts for JSON serialization
+        if tsv_type == "block" and parsed and isinstance(parsed[0], BlockInfo):
+            rsc.parse_data = [b.to_dict() for b in parsed]
+        else:
+            rsc.parse_data = parsed
         rsc.check_status = COMPILED_OK
     return bugs
 
@@ -309,8 +301,3 @@ def build_settings(project: Project) -> list[BlockSetting]:
 
     project.settings = settings
     return settings
-
-
-def read_settings(project: Project) -> list[BlockSetting]:
-    """Return the current settings list (no rebuild)."""
-    return project.settings

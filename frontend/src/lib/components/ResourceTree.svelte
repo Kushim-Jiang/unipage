@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { resources } from '../../stores/project';
+  import { resources, bugs, pushNetworkError } from '../../stores/project';
   import * as api from '../api';
-  import { bugs } from '../../stores/project.js';
 
   const headers = ['Project Files', 'Block Files', 'Font Files', 'Attribute Files'];
   const rscKeys = ['project', 'block', 'font', 'attribute'];
@@ -23,7 +22,7 @@
       for (const file of files) {
         try {
           await api.uploadResource(file);
-        } catch (/** @type {any} */ e) { alert(e.message); }
+        } catch (/** @type {any} */ e) { pushNetworkError(e.message); }
       }
       const updated = await api.listResources();
       resources.set(updated);
@@ -38,7 +37,7 @@
       await api.deleteResource(path);
       const updated = await api.listResources();
       resources.set(updated);
-    } catch (/** @type {any} */ e) { alert(e.message); }
+    } catch (/** @type {any} */ e) { pushNetworkError(e.message); }
   }
 
   async function handleParseAll() {
@@ -47,7 +46,7 @@
       bugs.set(r.bugs);
       const updated = await api.listResources();
       resources.set(updated);
-    } catch (/** @type {any} */ e) { alert(e.message); }
+    } catch (/** @type {any} */ e) { pushNetworkError(e.message); }
   }
 </script>
 
