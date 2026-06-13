@@ -1,13 +1,13 @@
-### Usage
+## Quick Start
 
-1. Create a project folder like `../prj/`.
-2. Run `src > unipage.py`.
-3. Create a project (`Ctrl + N` or click `新建项目`) by filling in the the project name (`项目名称`) and the project path (`项目路径`, like `../prj/`). The project file will be `../prj/{project name}.upj`.
-4. Import the resources (click `导入资源`) by selecting the resources (in `*.att` attribute file, `*.blk` block file and font file). Files with unrecognized types are ignored.
-5. Parse the resources (`F5` or click `解析资源`) and see the compilation results (errors, warnings, information). If errors and warnings exist, you can revise and save the files and parse again.
-6. Finish the settings (`Left` and `Right` to change option).
-7. Preprint check (click `印前检查`) and see the compilation results. If errors and warnings exist, you can revise the settings and check again (SVG files will be generated in `../prj/svg/` folder).
-8. Print (click `打印`) and get the PDF file in `../prj/pdf/{block name}.pdf`.
+1. Run `start.bat` — this launches the backend (FastAPI on port 8001) and the frontend (Vite on port 5173).
+2. Open `http://localhost:5173` in your browser.
+3. Click **New Project** and enter a project name.
+4. Click **Import Resource** to upload your `.tsv` / `.ttf` / `.otf` resource files.
+5. Click **Parse Resources** to compile block and attribute files. Check the bottom panel for any errors or warnings.
+6. Configure per-block settings in the left panel (Print, Columns, Format, Title page, Font sources).
+7. Click **Check Proofs** to validate all printable blocks. If the button turns green, proofs pass.
+8. Click **Generate PDF** to produce PDF output files in the project's `pdf/` folder.
 
 ### Block Information
 

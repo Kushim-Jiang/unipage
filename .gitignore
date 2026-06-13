@@ -1,8 +1,18 @@
+# Project generated directories
 svg/
 pdf/
 temp/
-.vscode/
-.qt_for_python/
+fonts/
+
+# Frontend (Svelte / Vite)
+node_modules/
+frontend/dist/
+frontend/.svelte-kit/
+
+# Python virtual environment
+.venv/
+venv/
+env/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -20,7 +30,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/
 lib64/
 parts/
 sdist/
