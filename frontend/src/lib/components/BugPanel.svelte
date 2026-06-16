@@ -36,9 +36,13 @@
             {bug._severity === 'error' ? 'E' : bug._severity === 'warning' ? 'W' : 'I'}
           </span>
           <span class="code">{bug.code}</span>
-          <span class="label">{bug.label}</span>
-          {#if bug.file}<span class="file">{bug.file}</span>{/if}
-          {#if bug.detail}<span class="detail">{bug.detail}</span>{/if}
+          <div class="content">
+            <div class="header">
+              <span class="label">{bug.label}</span>
+              {#if bug.file}<span class="file">{bug.file}</span>{/if}
+            </div>
+            {#if bug.detail}<pre class="detail">{bug.detail}</pre>{/if}
+          </div>
         </div>
       {/each}
     {:else}
@@ -54,16 +58,18 @@
   .counts { color: #95a5a6; }
   .net-count { color: #e74c3c; margin-left: 0.3rem; font-weight: bold; }
   .list { flex: 1; overflow-y: auto; font-size: 0.8rem; min-height: 0; }
-  .entry { padding: 0.2rem 0.4rem; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 0.3rem; }
+  .entry { padding: 0.2rem 0.4rem; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; gap: 0.3rem; }
   .entry.error { background: #fef0ef; }
   .entry.warning { background: #fef9e7; }
   .severity-tag { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 3px; font-size: 0.7rem; font-weight: bold; color: #fff; flex-shrink: 0; }
   .severity-tag.err { background: #e74c3c; }
   .severity-tag.warn { background: #f39c12; }
   .severity-tag:not(.err):not(.warn) { background: #3498db; }
-  .code { font-family: monospace; font-weight: bold; min-width: 35px; flex-shrink: 0; }
-  .label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .code { font-family: monospace; font-weight: bold; min-width: 40px; flex-shrink: 0; }
+  .content { flex: 1; min-width: 0; }
+  .header { display: flex; align-items: baseline; gap: 0.3rem; }
+  .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .file { color: #7f8c8d; font-size: 0.75rem; flex-shrink: 0; }
-  .detail { color: #95a5a6; font-size: 0.75rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .detail { color: #c0392b; font-size: 0.7rem; white-space: pre-wrap; word-break: break-all; font-family: monospace; background: #fafafa; padding: 0.15rem 0.3rem; border-radius: 2px; margin: 0.1rem 0 0 0; text-align: left; }
   .empty { text-align: center; padding: 1rem; color: #bdc3c7; }
 </style>

@@ -2,8 +2,8 @@
   import { resources, bugs, pushNetworkError } from '../../stores/project';
   import * as api from '../api';
 
-  const headers = ['Project Files', 'Block Files', 'Font Files', 'Attribute Files'];
-  const rscKeys = ['project', 'block', 'font', 'attribute'];
+  const headers = ['Project Files', 'Font Files', 'Data Files'];
+  const rscKeys = ['project', 'font', 'data'];
   const statusLabels = { 0: 'Uncompiled', 1: 'Compile Failed', 2: 'Compiled' };
 
   $: rsc = $resources;
@@ -68,7 +68,7 @@
               <span class="status" class:ok={item[1] === 2} class:fail={item[1] === 1}>
                 {statusLabels[/** @type {0|1|2} */ (item[1])] ?? 'Unknown'}
               </span>
-              <button class="delete" on:click|stopPropagation={() => handleDelete(item[2])} title="Delete">×</button>
+              <button class="delete" on:click|stopPropagation={() => handleDelete(item[2])} title="Delete">x</button>
             </div>
           {/each}
         {:else}
@@ -86,7 +86,7 @@
   .tree details { margin-bottom: 0.3rem; }
   .tree summary { cursor: pointer; font-weight: bold; padding: 0.3rem; background: #ecf0f1; border-radius: 4px; }
   .item { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.3rem 0.2rem 1.5rem; font-size: 0.9rem; }
-  .name { flex: 1; }
+  .name { flex: 1; word-break: break-all; }
   .status { font-size: 0.8rem; color: #7f8c8d; }
   .status.ok { color: #27ae60; }
   .status.fail { color: #e74c3c; }

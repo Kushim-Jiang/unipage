@@ -17,7 +17,7 @@ from re import compile as _compile
 
 from backend.models.dataclasses import BlockInfo, BugEntry
 
-# ── Source name helpers ──────────────────────────────────────────────
+# -- Source name helpers ----------------------------------------------
 
 _SUBMITTER_NAMES = ["G", "H", "M", "T", "K", "KP", "J", "V", "GS", "UK", "UTC", "SAT"]
 
@@ -51,7 +51,7 @@ def submitter_no(reference: str) -> int:
     return 0
 
 
-# ── Radical-stroke display ──────────────────────────────────────────
+# -- Radical-stroke display ------------------------------------------
 
 _RS_VARIANTS: dict[str, str] = {
     "90'": "\u2ea6",
@@ -98,12 +98,7 @@ def show_rs(rs: str) -> str | None:
     return (_RS_VARIANTS.get(key, "") + "\u3000" + rs) if key in _RS_VARIANTS else None
 
 
-def _parse_char(s: str) -> str:
-    """Extract and uppercase a character name from a cross-reference line."""
-    return s[:-1].split(" - ")[-1].upper() if s.startswith("(") else s.upper()
-
-
-# ── Custom exception ────────────────────────────────────────────────
+# -- Custom exception ------------------------------------------------
 
 
 class ParseError(Exception):
@@ -116,7 +111,7 @@ class ParseError(Exception):
             self.arg = BugEntry.from_list(arg)
 
 
-# ── Internal helpers ────────────────────────────────────────────────
+# -- Internal helpers ------------------------------------------------
 
 
 def _encode(line: str) -> str:
@@ -148,21 +143,21 @@ def _read_lines(path: str):
             yield line
 
 
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 # TSV type detection (both block and attribute use .tsv now)
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 
 
-_BLK_TYPES = {"C", "W", "H", "V"}
-_ATT_TYPES = {"RSH", "RSW", "NL"}
+_BLK_TYPES = {"RF-W", "RF-H", "RF-V"}
+_ATT_TYPES = {"RS-W", "RS-H", "NL", "CD", "FT"}
 
 
 def detect_tsv_type(path: str) -> str:
-    """Detect whether a .tsv file is a block or attribute file.
+    """Detect the internal type of a .tsv data file from its header.
 
-    Reads the first header line. Block headers have a single-letter
-    type field (C/W/H/V); attribute headers have RSH/RSW/NL.
-    Returns ``'block'``, ``'attribute'``, or ``'unknown'``.
+    Returns the type code: ``'RF-W'``, ``'RF-H'``, ``'RF-V'`` (blocks),
+    ``'RS-W'``, ``'RS-H'``, ``'NL'``, ``'CD'``, ``'FT'`` (other data),
+    or ``'unknown'``.
     """
     try:
         with open(path, "r", encoding="utf-8") as fp:
@@ -172,19 +167,17 @@ def detect_tsv_type(path: str) -> str:
                     parts = line[1:].strip().split(";")
                     if len(parts) >= 3:
                         type_field = parts[2].strip()
-                        if type_field in _BLK_TYPES:
-                            return "block"
-                        if type_field in _ATT_TYPES:
-                            return "attribute"
+                        if type_field in _BLK_TYPES | _ATT_TYPES:
+                            return type_field
                     return "unknown"
     except Exception:
         pass
     return "unknown"
 
 
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 # Public parsers
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 
 
 def parse_project_file(path: str) -> tuple[dict | list, list[BugEntry]]:
@@ -247,11 +240,11 @@ def parse_block_file(path: str) -> tuple[list[BlockInfo], list[BugEntry]]:
                 if blk_init >= blk_fina:
                     raise ParseError(_bug(0, "C005", path, _encode(line)))
                 if blk_init % 16 != 0:
-                    bugs.append(_bug(1, "J001", path, _encode(line)))
+                    bugs.append(_bug(0, "J001", path, _encode(line)))
                 if blk_fina % 16 != 15:
-                    bugs.append(_bug(1, "J002", path, _encode(line)))
+                    bugs.append(_bug(0, "J002", path, _encode(line)))
             else:
-                # Data lines — delegate by block type
+                # Data lines -- delegate by block type
                 _dispatch_blk_line(blk_type, content, line, blk_init, path, bugs)
 
         # Finalize last block
@@ -272,35 +265,18 @@ def parse_block_file(path: str) -> tuple[list[BlockInfo], list[BugEntry]]:
     return blocks, bugs
 
 
-# ── Block line-type dispatchers ───────────────────────────────────────
+# -- Block line-type dispatchers ---------------------------------------
 
 
 def _dispatch_blk_line(blk_type: str, cont: dict, line: str, blk_init: int, path: str, bugs: list) -> None:
     parsers = {
-        "C": _parse_block_c_line,
-        "W": _parse_block_w_line,
-        "H": _parse_block_h_line,
-        "V": _parse_block_v_line,
+        "RF-W": _parse_block_w_line,
+        "RF-H": _parse_block_h_line,
+        "RF-V": _parse_block_v_line,
     }
     parser = parsers.get(blk_type)
     if parser:
         parser(cont, line, blk_init, path, bugs)
-
-
-def _parse_block_c_line(cont: dict, line: str, *args) -> int | None:
-    """Parse a C-type (named character) data line."""
-    parts = line.strip().split("\t")
-    if len(parts) == 3:
-        cp, name, pua = parts
-        cp_i, pua_i = int(cp.strip(), 16), int(pua.strip(), 16)
-        cont[str(cp_i)] = [None, pua_i, name.upper()]
-        return cp_i
-    if len(parts) == 2:
-        cp, name = parts
-        cp_i = int(cp.strip(), 16)
-        cont[str(cp_i)] = [None, cp_i, name.upper()]
-        return cp_i
-    return None
 
 
 def _parse_block_w_line(cont: dict, line: str, blk_init: int, path: str, bugs: list) -> None:
@@ -341,9 +317,9 @@ def _parse_block_v_line(cont: dict, line: str, *args) -> int | None:
     return cp
 
 
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 # ATT parser
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 
 
 _RS_PATTERN = _compile(r"[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}")
@@ -353,7 +329,7 @@ def parse_attribute_file(path: str) -> tuple[list[dict], list[BugEntry]]:
     """Parse a ``.tsv`` attribute file.
 
     Returns (contents, bugs).  Each content dict has key ``inf_cont``
-    which is either a dict (RSH/RSW) or a list (NL).
+    which is either a dict (RS-H/RS-W) or a list (NL).
     """
     contents: list[dict] = []
     bugs: list[BugEntry] = []
@@ -371,7 +347,8 @@ def parse_attribute_file(path: str) -> tuple[list[dict], list[BugEntry]]:
             if line[0] == "#":
                 # Finalize previous section
                 if section_name:
-                    contents.append(deepcopy({"inf_cont": set_cont if set_cont else lst_cont}))
+                    inf_cont = _finalise_section(inf_type, set_cont, lst_cont)
+                    contents.append(deepcopy({"inf_cont": inf_cont}))
                     set_cont, lst_cont = {}, []
 
                 # #range;name;type
@@ -380,13 +357,14 @@ def parse_attribute_file(path: str) -> tuple[list[dict], list[BugEntry]]:
                 section_name = parts[1].strip()
                 inf_type = parts[2].strip()
 
-                if inf_type not in ("RSH", "RSW", "NL"):
+                if inf_type not in ("RS-H", "RS-W", "NL"):
                     raise ValueError
             else:
                 _dispatch_attribute_line(inf_type, set_cont, lst_cont, line, path, bugs)
 
         if section_name:
-            contents.append(deepcopy({"inf_cont": set_cont if set_cont else lst_cont}))
+            inf_cont = _finalise_section(inf_type, set_cont, lst_cont)
+            contents.append(deepcopy({"inf_cont": inf_cont}))
 
     except Exception as exc:
         bugs.append(_handle_exc(exc, path))
@@ -394,13 +372,30 @@ def parse_attribute_file(path: str) -> tuple[list[dict], list[BugEntry]]:
     return contents, bugs
 
 
+def _parse_nameslist_lines(lines: list[str]):
+    """Parse raw NL (NamesList) lines into structured entries.
+
+    Delegates to the full parser in :mod:`backend.non_cjk_generation.parsers`.
+    """
+    from backend.non_cjk_generation.parsers import parse_nameslist_from_lines
+
+    return parse_nameslist_from_lines(lines)
+
+
 def _dispatch_attribute_line(inf_type: str, set_cont: dict, lst_cont: list, line: str, path: str, bugs: list) -> None:
-    if inf_type == "RSH":
+    if inf_type == "RS-H":
         _parse_attribute_rsh(set_cont, line, path, bugs)
-    elif inf_type == "RSW":
+    elif inf_type == "RS-W":
         _parse_attribute_rsw(set_cont, line, path, bugs)
     elif inf_type == "NL":
-        _parse_attribute_nl(lst_cont, line)
+        lst_cont.append(line)  # collect raw lines; parsed later
+
+
+def _finalise_section(inf_type: str, set_cont: dict, lst_cont: list):
+    """Convert collected raw data to the final ``inf_cont`` value."""
+    if inf_type == "NL" and lst_cont:
+        return _parse_nameslist_lines(lst_cont)
+    return set_cont if set_cont else lst_cont
 
 
 def _validate_rs(rs_value: str, line: str, path: str, bugs: list, severity: int = 1) -> None:
@@ -427,50 +422,3 @@ def _parse_attribute_rsw(set_cont: dict, line: str, path: str, bugs: list) -> No
     for v in values:
         _validate_rs(v.strip(), line, path, bugs, severity=0)
     set_cont[str(sq)] = values
-
-
-def _parse_attribute_nl(lst_cont: list, line: str) -> None:
-    """Parse an NL-type (names list) line."""
-    nl = line.strip()
-    if nl.startswith("@"):
-        if nl.startswith("@@@+"):
-            lst_cont.append(["SUBTITLE", nl.split("\t")[-1]])
-        elif nl.startswith("@@@~"):
-            lst_cont.append(["MIXED_SUBHEADER", nl.split("\t")[-1] if nl != "@@@~" else ""])
-        elif nl.startswith("@@"):
-            if nl.startswith("@@~"):
-                lst_cont.append(["ALTGLYPH_SUBHEADER", nl.split("\t")[-1] if nl != "@@~" else ""])
-            elif nl.startswith("@@"):
-                # BLOCKHEADER
-                parts = nl.split("\t")
-                lst_cont.append(["BLOCKHEADER", [parts[2], parts[1], parts[3]]] if len(parts) >= 4 else None)
-        elif nl.startswith("@+"):
-            lst_cont.append(
-                ["NOTICE_LINE (bullet)" if nl.startswith("@+\t*") else "NOTICE_LINE", nl.split("\t")[-1].lstrip("*")]
-            )
-        elif nl.startswith("@~"):
-            lst_cont.append(["VARIATION_SUBHEADER", nl.split("\t")[-1] if nl != "@~" else ""])
-        else:
-            lst_cont.append(["SUBHEADER", nl.split("\t")[-1]])
-    elif nl.startswith("\t"):
-        if nl.startswith("\t\tx"):
-            lst_cont.append(["CROSS_REF (notice)", _parse_char(nl.split("x ")[-1])])
-        elif nl.startswith("\tx"):
-            lst_cont.append(["CROSS_REF", _parse_char(nl.split("x ")[-1])])
-        elif nl.startswith("\t="):
-            lst_cont.append(["ALIAS_LINE", nl.split("= ")[-1]])
-        elif nl.startswith("\t%"):
-            lst_cont.append(["FORMALALIAS_LINE", nl.split("% ")[-1]])
-        elif nl.startswith("\t~"):
-            lst_cont.append(["VARIATION_LINE", nl.split("~ ")[-1]])
-        elif nl.startswith("\t:"):
-            lst_cont.append(["DECOMPOSITION", nl.split(": ")[-1]])
-    elif nl.startswith(";"):
-        if nl.startswith(";;"):
-            lst_cont.append(["SIDEBAR_LINE", nl.split(";; ")[-1]])
-    else:
-        parts = nl.split("\t")
-        cp, name = parts[0], parts[-1]
-        lst_cont.append(
-            ["RESERVED_LINE", [cp.upper(), name]] if name == "<reserved>" else ["NAME_LINE", [cp.upper(), name.upper()]]
-        )

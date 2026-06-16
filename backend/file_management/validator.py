@@ -1,11 +1,11 @@
-"""Validation helpers — bug labels, status tracking, and summary."""
+"""Validation helpers -- bug labels, status tracking, and summary."""
 
 from __future__ import annotations
 
 from backend.models.dataclasses import BugEntry
 
 _BUG_LABELS: dict[str, str] = {
-    # ── C: Core / Common ─────────────────────────────────────────
+    # -- C: Core / Common -----------------------------------------
     "C000": "Unknown error.",
     "C001": "Block file format error.",
     "C002": "Invalid RS expression.",
@@ -16,27 +16,27 @@ _BUG_LABELS: dict[str, str] = {
     "C007": "No font selected.",
     "C008": "Missing glyph.",
     "C009": "Font does not exist.",
-    "C010": "Resource import collision — path already registered.",
+    "C010": "Resource import collision -- path already registered.",
     "C011": "Unsupported resource extension.",
-    "C012": "TSV type detection failed — header missing or unrecognised.",
-    # ── J: Unicode / Encoding ────────────────────────────────────
+    "C012": "TSV type detection failed -- header missing or unrecognised.",
+    # -- J: Unicode / Encoding ------------------------------------
     "J001": "Block range start mod 16 is not 0, violating Unicode Standard Conformance D10b.",
     "J002": "Block range end mod 16 is not 15, violating Unicode Standard Conformance D10b.",
     "J003": "Character outside block range.",
     "J004": "Radical does not exist.",
-    # ── B: Backend API / Resource lifecycle ──────────────────────
-    "B001": "Project already open — close it first.",
+    # -- B: Backend API / Resource lifecycle ----------------------
+    "B001": "Project already open -- close it first.",
     "B002": "No project open.",
     "B003": "Resource not found.",
     "B004": "Resource file missing on disk.",
-    "B005": "Font parse partial failure — some tables missing.",
+    "B005": "Font parse partial failure -- some tables missing.",
     "B006": "Save path not set in project_info.",
-    "B007": "TSV routed to wrong parser — detected type mismatch.",
-    # ── G: Generation (PDF, SVG, layout) ─────────────────────────
-    "G001": "Empty block skipped — no content codepoints.",
+    "B007": "TSV routed to wrong parser -- detected type mismatch.",
+    # -- G: Generation (PDF, SVG, layout) -------------------------
+    "G001": "Empty block skipped -- no content codepoints.",
     "G002": "SVG glyph extraction error.",
     "G003": "PDF canvas rendering error.",
-    "G004": "IVD font mismatch — variation-sequence font differs from base.",
+    "G004": "IVD font mismatch -- variation-sequence font differs from base.",
     "G005": "C-type block not yet supported by layout engine.",
 }
 

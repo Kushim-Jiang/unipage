@@ -1,11 +1,11 @@
-"""Project model — holds all data for one Unipage project."""
+"""Project model -- holds all data for one Unipage project."""
 
 from __future__ import annotations
 
 from json import dumps
 from os import makedirs
 from os.path import basename, exists, join, splitext
-from re import sub as _sub, subn
+from re import sub as _sub
 from typing import Optional
 
 from backend.models.dataclasses import BlockInfo, BlockSetting, ProjectInfo, ResourceCollection, ResourceEntry
@@ -16,11 +16,11 @@ def sanitize_filename(name: str) -> str:
     return _sub(r'[\\/:*?"<>|]', "", name)
 
 
-# ── Resource record helpers ─────────────────────────────────────────
+# -- Resource record helpers -----------------------------------------
 
 _RESOURCE_EXT_MAP = {
     ".json": "project",
-    ".tsv": "block",
+    ".tsv": "data",
     ".ttf": "font",
     ".otf": "font",
 }
@@ -36,20 +36,12 @@ def _resource_paths(resources: dict) -> list[str]:
     """Return all resource URLs from a resources dict as a flat list."""
     if isinstance(resources, ResourceCollection):
         return [r.url for r in resources.all()]
-    return [
-        r[2]
-        for r in (
-            resources.get("project", [])
-            + resources.get("block", [])
-            + resources.get("font", [])
-            + resources.get("attribute", [])
-        )
-    ]
+    return [r[2] for r in (resources.get("project", []) + resources.get("font", []) + resources.get("data", []))]
 
 
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 # Project class
-# ══════════════════════════════════════════════════════════════════
+# ==================================================================
 
 
 class Project:
@@ -59,8 +51,8 @@ class Project:
     ------
     project_info : ProjectInfo
         Project identification data.
-    resources : dict
-        ``{"project": [...], "block": [...], "font": [...], "attribute": [...]}``
+    resources : ResourceCollection
+        ``{"project": [...], "font": [...], "data": [...]}``
         Each entry: ``ResourceEntry``
     blocks : list[BlockInfo]
         Parsed block definitions.
@@ -77,7 +69,7 @@ class Project:
         self.blocks: list[BlockInfo] = []
         self.settings: list[BlockSetting] = []
 
-    # ── Persistence ──────────────────────────────────────────────
+    # -- Persistence ----------------------------------------------
 
     def to_dict(self) -> dict:
         return {
@@ -124,7 +116,7 @@ class Project:
             return cls(), bugs
         return cls.from_dict(data), bugs
 
-    # ── Resource management helpers ──────────────────────────────
+    # -- Resource management helpers ------------------------------
 
     def all_resource_paths(self) -> list[str]:
         return _resource_paths(self.resources)
@@ -136,7 +128,7 @@ class Project:
         check_status: int,
         parse_data: Optional[list] = None,
     ) -> str:
-        """Register a resource. Returns the resource key ('project','block','font','attribute')."""
+        """Register a resource. Returns the resource key ('project','font','data')."""
         from os import remove as os_remove
         from shutil import copyfile
 
@@ -153,25 +145,16 @@ class Project:
                 os_remove(dest_path)
             copyfile(src_path, dest_path)
 
-        # ── TSV type detection ──────────────────────────────────
-        # .tsv files can be either block or attribute — check header.
-        if ext == ".tsv" and exists(dest_path):
-            from backend.file_management.parser import detect_tsv_type
-
-            detected = detect_tsv_type(dest_path)
-            if detected == "attribute":
-                rsc_key = "attribute"
-            elif detected == "block":
-                rsc_key = "block"
-
         entry = ResourceEntry(basename(dest_path), check_status, dest_path, parse_data)
         getattr(self.resources, rsc_key).append(entry)
         return rsc_key
 
+    _ALL_RSC_KEYS = ("project", "font", "data")
+
     def remove_resource_by_path(self, path: str) -> bool:
         """Remove a resource by its URL. Returns True if found."""
-        for rsc_key in ("block", "font", "attribute"):
-            rsc_list = getattr(self.resources, rsc_key)
+        for rsc_key in self._ALL_RSC_KEYS:
+            rsc_list = getattr(self.resources, rsc_key, [])
             for rsc in list(rsc_list):
                 if rsc.url == path:
                     rsc_list.remove(rsc)
@@ -180,16 +163,17 @@ class Project:
 
     def find_resource(self, path: str) -> Optional[ResourceEntry]:
         """Find a resource entry by URL."""
-        for rsc_key in ("project", "block", "font", "attribute"):
+        for rsc_key in self._ALL_RSC_KEYS:
             for rsc in getattr(self.resources, rsc_key, []):
                 if rsc.url == path:
                     return rsc
         return None
 
     def find_resources_by_type(self, rsc_key: str) -> list:
-        return getattr(self.resources, rsc_key, [])
+        """Return all resources of a given type key."""
+        return list(getattr(self.resources, rsc_key, []))
 
-    # ── Block / Setting lookup ───────────────────────────────────
+    # -- Block / Setting lookup -----------------------------------
 
     def get_block(self, name: str) -> Optional[BlockInfo]:
         for blk in self.blocks:

@@ -1,4 +1,4 @@
-"""Application state — a singleton holding the active project."""
+"""Application state -- a singleton holding the active project."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ class _AppState:
         self.check_done: bool = False
         self.check_bugs: Optional[dict] = None
 
-    # ── project ──────────────────────────────────────────────────
+    # -- project --------------------------------------------------
 
     @property
     def project(self) -> Optional[Project]:
@@ -44,7 +44,7 @@ class _AppState:
     def has_project(self) -> bool:
         return self._project is not None
 
-    # ── proofs (cached output of make_proof, consumed by make_pdf) ─
+    # -- proofs (cached output of make_proof, consumed by make_pdf) -
 
     @property
     def proofs(self) -> list[dict]:
@@ -57,7 +57,7 @@ class _AppState:
     def clear_proofs(self) -> None:
         self._proofs = []
 
-    # ── helpers ──────────────────────────────────────────────────
+    # -- helpers --------------------------------------------------
 
     def reset(self) -> None:
         """Clear everything (close project)."""
@@ -73,5 +73,5 @@ class _AppState:
         self.check_bugs = None
 
 
-# Singleton — import this from anywhere in the backend.
+# Singleton -- import this from anywhere in the backend.
 STATE = _AppState()

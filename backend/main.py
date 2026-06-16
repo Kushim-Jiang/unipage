@@ -1,4 +1,4 @@
-"""Unipage backend entry point — FastAPI server.
+"""Unipage backend entry point -- FastAPI server.
 
 Usage
 -----
@@ -14,7 +14,7 @@ from backend.api.routes import router
 
 app = FastAPI(
     title="Unipage API",
-    description="Backend for Unipage — Unicode code chart file management and PDF generation.",
+    description="Backend for Unipage -- Unicode code chart file management and PDF generation.",
     version="2.0.0",
 )
 

@@ -37,7 +37,7 @@ function get<T = any>(path: string): Promise<T> { return request('GET', path); }
 function post<T = any>(path: string, body?: JsonValue): Promise<T> { return request('POST', path, body); }
 function del<T = any>(path: string): Promise<T> { return request('DELETE', path); }
 
-// ── Types ─────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------
 
 export interface ProjectStatus {
   open: boolean;
@@ -48,7 +48,7 @@ export interface ProjectStatus {
   };
 }
 
-// ── Project ──────────────────────────────────────────────────────
+// -- Project ------------------------------------------------------
 
 export function createProject(name: string, directory: string) {
   return post<{ status: string; project_file: string }>('/project/create', { name, directory, file: '' });
@@ -74,7 +74,7 @@ export function getProjectStatus() {
   return get<ProjectStatus>('/project/status');
 }
 
-// ── Resources ────────────────────────────────────────────────────
+// -- Resources ----------------------------------------------------
 
 import type { ResourceMap } from '../stores/project';
 
@@ -123,7 +123,7 @@ export function parseOneResource(path: string) {
   return get(`/resources/parse-one?path=${encodeURIComponent(path)}`);
 }
 
-// ── Blocks ───────────────────────────────────────────────────────
+// -- Blocks -------------------------------------------------------
 
 export function listBlocks() {
   return get<any[]>('/blocks');
@@ -133,7 +133,7 @@ export function getBlock(name: string) {
   return get<any>(`/blocks/${encodeURIComponent(name)}`);
 }
 
-// ── Settings ─────────────────────────────────────────────────────
+// -- Settings -----------------------------------------------------
 
 export function listSettings() {
   return get<any[]>('/settings');
@@ -147,7 +147,7 @@ export function toggleColour(name: string, codepoint: number, colour: string) {
   return post<{ status: string; setting: any }>('/settings/colour-toggle', { name, codepoint, colour });
 }
 
-// ── Proof / PDF ──────────────────────────────────────────────────
+// -- Proof / PDF --------------------------------------------------
 
 export function checkProof(name: string) {
   return post(`/proof/check?name=${encodeURIComponent(name)}`);
@@ -183,7 +183,50 @@ export function pollGenerateProgress() {
   return get<{ progress: number; done: boolean; results: any[] }>('/proof/generate-progress');
 }
 
-// ── Utils ────────────────────────────────────────────────────────
+// -- Non-CJK -----------------------------------------------------
+
+export interface NonCjkPdfRequest {
+  block_name: string;
+  start_cp: number;
+  end_cp: number;
+  title_page: boolean;
+  yellow: number[];
+  purple: number[];
+}
+
+export function generateNonCjkPdf(req: NonCjkPdfRequest) {
+  return post<{ status: string; pdf_path: string; pages: number }>('/non-cjk/generate-pdf', req as any);
+}
+
+export function listNonCjkBlocks() {
+  return get<any[]>('/non-cjk/blocks');
+}
+
+export function getNonCjkBlock(name: string) {
+  return get<any>(`/non-cjk/blocks/${encodeURIComponent(name)}`);
+}
+
+export function listNonCjkSettings() {
+  return get<any[]>('/non-cjk/settings');
+}
+
+export function cycleNonCjkOption(name: string, field: string, forward: boolean) {
+  return post<{ status: string; setting: any }>('/non-cjk/settings/cycle', { name, field, forward });
+}
+
+export function setNonCjkPageStart(name: string, pageStart: number) {
+  return post<{ status: string; setting: any }>('/non-cjk/settings/page-start', { name, page_start: pageStart });
+}
+
+export function toggleNonCjkColour(name: string, codepoint: number, colour: string) {
+  return post<{ status: string; setting: any }>('/non-cjk/settings/colour-toggle', { name, codepoint, colour });
+}
+
+export function generateAllNonCjkPdf() {
+  return post<{ status: string; total: number }>('/non-cjk/generate-all');
+}
+
+// -- Utils --------------------------------------------------------
 
 export function resolveFolder(name: string) {
   return post<{ path: string }>('/utils/resolve-folder', { name });

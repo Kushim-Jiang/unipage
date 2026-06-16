@@ -11,9 +11,8 @@ export interface ProjectInfo {
 export interface ResourceMap {
   [key: string]: any[][];
   project: any[][];
-  block: any[][];
   font: any[][];
-  attribute: any[][];
+  data: any[][];
 }
 
 export interface BugReport {
@@ -31,7 +30,7 @@ export const projectOpen: Writable<boolean> = writable(false);
 export const projectInfo: Writable<ProjectInfo | null> = writable(null);
 
 /** Resource lists grouped by type */
-export const resources: Writable<ResourceMap> = writable({ project: [], block: [], font: [], attribute: [] });
+export const resources: Writable<ResourceMap> = writable({ project: [], font: [], data: [] });
 
 /** Parsed block list */
 export const blocks: Writable<any[]> = writable([]);
@@ -50,11 +49,10 @@ export const proofs: Writable<any[]> = writable([]);
 
 /** Derived: count of compiled resources */
 export const compiledCount: Readable<number> = derived(resources, ($r) => {
-  return ($r.block || []).filter((r: any) => r[1] === 2).length +
-         ($r.attribute || []).filter((r: any) => r[1] === 2).length;
+  return ($r.data || []).filter((r: any) => r[1] === 2).length;
 });
 
-// ── Network errors (connection, HTTP 4xx/5xx) ─────────────────────
+// -- Network errors (connection, HTTP 4xx/5xx) ---------------------
 
 export interface NetworkError {
   id: number;
@@ -81,7 +79,7 @@ export function clearNetworkErrors(): void {
 export function resetAllStores(): void {
   projectOpen.set(false);
   projectInfo.set(null);
-  resources.set({ project: [], block: [], font: [], attribute: [] });
+  resources.set({ project: [], font: [], data: [] });
   blocks.set([]);
   settings.set([]);
   bugs.set({ errors: [], warnings: [], infos: [], counts: { errors: 0, warnings: 0, infos: 0 } });

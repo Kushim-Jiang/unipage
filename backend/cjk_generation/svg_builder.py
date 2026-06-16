@@ -8,11 +8,17 @@ from __future__ import annotations
 from os.path import basename
 from re import sub as _sub
 from textwrap import dedent
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from fontTools import ttLib
 from fontTools.pens import boundsPen, svgPathPen
 from numpy import mean
+
+from backend.cjk_generation.layout import CjkPageData
+
+# Type aliases
+GlyphDict = dict[tuple, tuple[str, float] | None]
+"""{(cp, font_key) -> (svg_path, glyph_width)}."""
 
 
 def _hex_str(val: int) -> str:
@@ -37,49 +43,32 @@ def _resolve_glyph_name(cp: Any, font: ttLib.TTFont, font_cmap: dict) -> tuple[s
 
 
 def build_svg_glyphs(
-    pages: list,
+    pages: list[CjkPageData],
     svg_dir: str,
-    progress_callback: Optional[callable] = None,
-) -> dict | tuple[str, str]:
-    """Generate SVG files for all unique glyphs used across pages.
-
-    Parameters
-    ----------
-    pages : list
-        Each page is ``[cps, rss, glyphs, src_refs, fonts, min_cp, max_cp]``.
-    svg_dir : str
-        Directory to write SVG files into (trailing slash included).
-    progress_callback : callable, optional
-        ``fn(progress: float)`` called with 0.0–1.0.
-
-    Returns
-    -------
-    dict
-        ``{(cp, font_tuple) -> (svg_path, glyph_width)}``.
-        Also contains ``("fix", font_tuple) -> vertical_offset_correction``.
-    tuple
-        ``(font_name, cp_str)`` on error (glyph not found in font).
-    """
+    progress_callback: Optional[Callable[[float], None]] = None,
+) -> GlyphDict | tuple[str, str]:
+    """Generate SVG files for all unique glyphs used across pages."""
     # Collect unique (glyph, font) pairs
-    glyph_set: set = set()
+    glyph_set: set[tuple] = set()
     for page in pages:
-        for i in range(len(page[2])):
-            data = page[2][i]
-            font_key = tuple(page[4][i])
+        n = len(page.glyph_ids)
+        for i in range(n):
+            data = page.glyph_ids[i]
+            font_key = tuple(page.font_keys[i])
             if isinstance(data, int):
                 glyph_set.add((data, font_key))
             elif isinstance(data, (list, tuple)):
                 glyph_set.add((tuple(data), font_key))
 
     # Count glyphs per font for progress
-    font_glyph_counts: dict = {}
+    font_glyph_counts: dict[tuple, int] = {}
     for item in glyph_set:
         if item not in (("", ()), ((), ())):
             fnt = item[1]
             font_glyph_counts[fnt] = font_glyph_counts.get(fnt, 0) + 1
     total = sum(font_glyph_counts.values())
 
-    result: dict = {}
+    result: GlyphDict = {}
     processed = 0
 
     for font_key in set(item[1] for item in glyph_set if item not in (("", ()), ((), ()))):
@@ -127,7 +116,7 @@ def build_svg_glyphs(
         except (KeyError, AttributeError):
             return (font_key[0], label)
         except FileNotFoundError:
-            raise  # Propagate — caller handles C009
+            raise
 
         if widths:
             fix = (bp.bounds[3] - bp.bounds[1]) / 2 / mean(widths) - 0.25

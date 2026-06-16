@@ -2,7 +2,7 @@
 svg/
 pdf/
 temp/
-fonts/
+# fonts/
 
 # Frontend (Svelte / Vite)
 node_modules/

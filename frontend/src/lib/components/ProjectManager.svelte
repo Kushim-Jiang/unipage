@@ -57,7 +57,7 @@
     </div>
   {/if}
 
-  {#if loading}<div class="loading">Processing…</div>{/if}
+  {#if loading}<div class="loading">Processing...</div>{/if}
 </div>
 
 <style>

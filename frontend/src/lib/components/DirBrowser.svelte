@@ -57,7 +57,7 @@
       <div class="path">{current || 'Loading...'}</div>
       <div class="list">
         {#if loading}
-          <div class="item disabled">Loading…</div>
+          <div class="item disabled">Loading...</div>
         {:else}
           <div class="item up" on:click={goUp}>.. (parent)</div>
           {#each dirs as dir}

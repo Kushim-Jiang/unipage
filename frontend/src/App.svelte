@@ -16,13 +16,15 @@
   let parsePct = 0;
   let checkPct = 0;
   let progressPct = 0;
+  /** Tab: 'cjk' | 'noncjk' */
+  let activeTab: 'cjk' | 'noncjk' = 'cjk';
 
-  // ── Resizable splitter state ────────────────────────────────
+  // -- Resizable splitter state --------------------------------
   /** Column widths (pixels): left, center, right */
-  let colWidths = [260, 0, 240]; // 0 = flex (auto)
+  let colWidths = [260, 0, 320]; // 0 = flex (auto)
   let dragging: 'h-left' | 'h-right' | 'v-bottom' | null = null;
   let leftWidthSaved = 260;
-  let rightWidthSaved = 240;
+  let rightWidthSaved = 320;
   let bottomHeight = 80;
   let bottomHeightSaved = 80;
   $: showSettings = colWidths[0] > 0;
@@ -45,7 +47,7 @@
         if (d === 'h-left') {
           colWidths[0] = Math.max(120, Math.min(500, startL + (ev.clientX - startX)));
         } else if (d === 'h-right') {
-          colWidths[2] = Math.max(120, Math.min(500, startR - (ev.clientX - startX)));
+          colWidths[2] = Math.max(120, Math.min(600, startR - (ev.clientX - startX)));
         } else if (d === 'v-bottom') {
           bottomHeight = Math.max(20, Math.min(400, startH - (ev.clientY - startY)));
         }
@@ -122,13 +124,33 @@
   async function handleGenerateAll() {
     generating = true; progressPct = 0;
     try {
-      await api.startGenerateAll();
-      // Poll progress until done
+      if (activeTab === 'noncjk') {
+        await api.generateAllNonCjkPdf();
+      } else {
+        await api.startGenerateAll();
+      }
       while (true) {
         await new Promise(r => setTimeout(r, 100));
         const p = await api.pollGenerateProgress();
         progressPct = p.progress;
-        if (p.done) break;
+        if (p.done) {
+          if (p.results) {
+            const errs = p.results.filter((r: any) => r.status === 'error');
+            if (errs.length > 0) {
+              bugs.update(b => ({
+                ...b,
+                errors: [...(b?.errors || []), ...errs.map((r: any) => ({
+                  code: r.code || 'N014',
+                  label: r.block || '',
+                  file: 'PDF',
+                  detail: r.error + (r.traceback ? '\n' + r.traceback : ''),
+                }))],
+                counts: { ...b?.counts, errors: (b?.counts?.errors || 0) + errs.length }
+              }));
+            }
+          }
+          break;
+        }
       }
     } catch { /* error already in BottomBar */ }
     finally { generating = false; progressPct = 0; }
@@ -141,7 +163,7 @@
 </script>
 
 <div class="app">
-  <!-- ═══ Top bar: title left, buttons right ═══ -->
+  <!-- === Top bar: title left, buttons right === -->
   <header>
     <div class="top-row">
       <h1>Unipage</h1>
@@ -152,19 +174,19 @@
           <span class="project-name">{$projectInfo?.project_name ?? 'Untitled'}</span>
           <button class:parsing disabled={parsing} style={parsing ? `background-size:${parsePct}% 100%` : ''} on:click={handleParse}>Parse Resources</button>
           <button class:checking disabled={checking} class:passed={proofsPassed && !checking} style={checking ? `background-size:${checkPct}% 100%` : ''} on:click={handleCheckAll}>Check Proofs</button>
-          <button class:generating style={generating ? `background-size:${progressPct}% 100%` : ''} disabled={generating || !proofsPassed} on:click={handleGenerateAll}>Generate PDF</button>
+          <button class:generating style={generating ? `background-size:${progressPct}% 100%` : ''} disabled={generating} on:click={handleGenerateAll}>Generate PDF</button>
           <button class="danger" on:click={handleClose}>Close Project</button>
         {/if}
       </div>
     </div>
   </header>
 
-  <!-- ═══ Main area: three columns + bottom panel ═══ -->
+  <!-- === Main area: three columns + bottom panel === -->
   <main>
     {#if $projectOpen}
       <div class="main-area">
         <!-- Content row: horizontal grid for 3 columns -->
-        <div class="content-row" style="grid-template-columns:{colWidths[0]}px 4px 1fr 4px {colWidths[2]}px">
+        <div class="content-row" style="grid-template-columns:{colWidths[0]}px 4px 1fr 4px minmax({colWidths[2]}px, auto)">
           <!-- Left: settings -->
           <div class="col-left" class:collapsed={!showSettings}>
             {#if showSettings}<SettingsPanel />{/if}
@@ -182,12 +204,18 @@
               }
               colWidths = [...colWidths];
             }}>
-              {showSettings ? '◀' : '▶'}
+              {showSettings ? '\u25c0' : '\u25b6'}
             </button>
           </div>
 
           <!-- Center: block viewer -->
-          <div class="col-center"><BlockViewer /></div>
+          <div class="col-center">
+            <div class="tab-bar">
+              <button class="tab" class:active={activeTab === 'cjk'} on:click={() => activeTab = 'cjk'}>CJK Charts</button>
+              <button class="tab" class:active={activeTab === 'noncjk'} on:click={() => activeTab = 'noncjk'}>Non-CJK Charts</button>
+            </div>
+            <BlockViewer tab={activeTab} />
+          </div>
 
           <!-- Splitter C/R -->
           <div class="splitter-zone splitter-right">
@@ -202,7 +230,7 @@
               }
               colWidths = [...colWidths];
             }}>
-              {showResources ? '▶' : '◀'}
+              {showResources ? '\u25b6' : '\u25c0'}
             </button>
           </div>
 
@@ -228,7 +256,7 @@
           bottomHeight = bottomHeightSaved;
         }
       }}>
-        {showBottom ? '▼' : '▲'}
+        {showBottom ? '\u25bc' : '\u25b2'}
       </button>
     </div>
 
@@ -238,9 +266,9 @@
 </div>
 
 <style>
-  .app { font-family: 'Noto Sans SC', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+  .app { font-family: system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
 
-  /* ── Top bar ───────────────────────────── */
+  /* -- Top bar ----------------------------- */
   header { background: #2c3e50; color: white; padding: 0.3rem 1rem; flex-shrink: 0; }
   .top-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
   h1 { margin: 0; font-size: 1.1rem; white-space: nowrap; }
@@ -251,7 +279,7 @@
   .top-buttons :global(button.passed) { background: #27ae60; }
   .top-buttons :global(button:disabled) { opacity: 0.6; cursor: not-allowed; }
 
-  /* ── Real progress fill for in-progress buttons ── */
+  /* -- Real progress fill for in-progress buttons -- */
   .top-buttons :global(button.parsing),
   .top-buttons :global(button.checking) {
     cursor: wait;
@@ -267,7 +295,7 @@
     background-color: #3498db;
     transition: background-size 0.15s ease-out;
   }
-  /* ── Main area: flex column, content row is a grid ── */
+  /* -- Main area: flex column, content row is a grid -- */
   main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
   .main-area { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .content-row { display: grid; flex: 1; min-height: 0; gap: 0; }
@@ -275,10 +303,21 @@
   .col-left { overflow-y: auto; padding: 0.3rem; background: #fafafa; min-width: 0; }
   .col-left.collapsed { padding: 0; overflow: hidden; }
   .col-center { overflow-y: auto; padding: 0.3rem; background: #fff; }
+
+  /* -- Tab bar ----------------------------- */
+  .tab-bar { display: flex; gap: 0; margin-bottom: 0.5rem; border-bottom: 2px solid #e0e0e0; }
+  .tab {
+    background: transparent; border: none; padding: 0.4rem 1rem;
+    cursor: pointer; font-size: 0.85rem; color: #7f8c8d;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab:hover { color: #2c3e50; }
+  .tab.active { color: #3498db; border-bottom-color: #3498db; font-weight: bold; }
   .col-right { overflow-y: auto; padding: 0.3rem; background: #fafafa; min-width: 0; }
   .col-right.collapsed { padding: 0; overflow: hidden; }
 
-  /* ── Splitter zones ─────────────────────── */
+  /* -- Splitter zones ----------------------- */
   .splitter-zone { position: relative; display: flex; justify-content: center; }
   .splitter-zone .collapse-btn {
     position: absolute;
@@ -320,11 +359,11 @@
   }
   .splitter-zone .collapse-btn:hover { background: #ecf0f1; }
 
-  /* ── Splitters ──────────────────────────── */
+  /* -- Splitters ---------------------------- */
   .splitter-h { cursor: col-resize; background: #e0e0e0; transition: background 0.15s; height: 100%; flex: 1; }
   .splitter-h:hover { background: #3498db; }
 
-  /* ── Bottom bar splitter (v-splitter + collapse button) ── */
+  /* -- Bottom bar splitter (v-splitter + collapse button) -- */
   .splitter-zone-v { position: relative; height: 4px; flex-shrink: 0; }
   .splitter-v { cursor: row-resize; height: 4px; width: 100%; background: #e0e0e0; transition: background 0.15s; }
   .splitter-v:hover { background: #3498db; }
@@ -357,10 +396,10 @@
   }
   .splitter-zone-v .collapse-btn-v:hover { background: #ecf0f1; }
 
-  /* ── Welcome ─────────────────────────────── */
+  /* -- Welcome ------------------------------- */
   .welcome { flex: 1; text-align: center; padding: 4rem 2rem; color: #7f8c8d; }
 
-  /* ── Bottom bug bar ──────────────────────── */
+  /* -- Bottom bug bar ------------------------ */
   .bug-bar { flex-shrink: 0; border-top: 1px solid #e0e0e0; background: #fff; overflow: hidden; }
   .bug-bar.collapsed { height: 0 !important; border-top: none; }
 </style>

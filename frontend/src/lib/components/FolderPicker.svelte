@@ -26,7 +26,7 @@
   />
   <button
     class="pick-btn"
-    title="Browse folders…"
+    title="Browse folders..."
     {disabled}
     on:click={() => browserOpen = true}
   >&#128193; Browse</button>

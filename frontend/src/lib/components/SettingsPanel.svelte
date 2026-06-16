@@ -9,7 +9,7 @@
   /** Record of selected item keys: "settingName:field:sourceIndex" -> true */
   let selected: Record<string, boolean> = {};
   let lastClickedKey = '';
-  /** Reactive mirror — Svelte 5 tracks this object directly in templates. */
+  /** Reactive mirror -- Svelte 5 tracks this object directly in templates. */
   let selMap: Record<string, boolean> = {};
   $: selMap = selected;
 
@@ -56,7 +56,6 @@
   /** Cycle a single item, then batch-update any other selected items. */
   async function cycle(setting: any, field: string, forward: boolean, sourceIndex?: number) {
     const k = selKey(setting, field, sourceIndex);
-    // Collect ALL selected items (each uses its own field/si)
     const seen = new Set<string>();
     const batch: Array<{ name: string; field: string; si?: number }> = [];
     for (const sk of [k, ...Object.keys(selected)]) {
@@ -70,14 +69,30 @@
     }
 
     try {
-      // First collect all API responses, then apply store update once
       const results: Record<string, any> = {};
       for (const item of batch) {
-        const r = await api.cycleOption(item.name, item.field, forward, item.si);
-        results[item.name] = r.setting; // last per-name wins (backend state is cumulative)
+        const r = setting.type === 'NL'
+          ? await api.cycleNonCjkOption(item.name, item.field, forward)
+          : await api.cycleOption(item.name, item.field, forward, item.si);
+        results[item.name] = r.setting;
       }
       settings.update(s => s.map(st => results[st.name] ?? st));
-    } catch (/** @type {any} */ e) { pushNetworkError(e.message); }
+    } catch (e: any) { pushNetworkError(e.message); }
+  }
+
+  /** Validate and save the starting page number. */
+  async function handlePageStart(setting: any, e: Event) {
+    const input = e.target as HTMLInputElement;
+    const raw = input.value.trim();
+    const num = parseInt(raw, 10);
+    if (isNaN(num) || num < 1 || num !== parseFloat(raw)) {
+      input.value = String(setting.content.chart_page_base ?? 1);
+      return;
+    }
+    try {
+      const r = await api.setNonCjkPageStart(setting.name, num);
+      settings.update(s => s.map(st => st.name === r.setting.name ? r.setting : st));
+    } catch (err: any) { pushNetworkError(err.message); }
   }
 
   function fieldValue(setting: any, idx: number) {
@@ -87,6 +102,8 @@
     if (idx === 2) return formatLabels[v] ?? '';
     return '';
   }
+
+  function isNL(setting: any): boolean { return setting.type === 'NL'; }
 </script>
 
 <div class="settings-panel">
@@ -94,46 +111,45 @@
     <details open>
       <summary>{setting.name} [{setting.type}]</summary>
       <div class="fields">
-        {#each ['Print', 'Columns', 'Format', 'Title page'] as label, idx}
-          {@const field = ['print', 'column', 'format', 'title'][idx]}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <div class="field" class:sel={selMap[selKey(setting, field)]} data-selkey={selKey(setting, field)}
-               on:click={(e) => toggleSelect(e, setting, field)}
-               on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,field,false); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,field,true); } }}
-               role="option" aria-selected={!!selMap[selKey(setting, field)]} tabindex="0">
-            <span class="label">{label}</span>
-            <button on:click|stopPropagation={() => cycle(setting, field, false)}>◁</button>
-            <span class="value">{fieldValue(setting, idx)}</span>
-            <button on:click|stopPropagation={() => cycle(setting, field, true)}>▷</button>
+        {#if isNL(setting)}
+          <!-- Non‑CJK fields -->
+          {#each ['Print', 'Title Page'] as label, idx}
+            {@const field = ['print', 'title_page'][idx]}
+            <div class="field" class:sel={selMap[selKey(setting, field)]} data-selkey={selKey(setting, field)}
+                 on:click={(e) => toggleSelect(e, setting, field)}
+                 on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,field,false); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,field,true); } }}
+                 role="option" aria-selected={!!selMap[selKey(setting, field)]} tabindex="0">
+              <span class="label">{label}</span>
+              <button on:click|stopPropagation={() => cycle(setting, field, false)}>&#9665;</button>
+              <span class="value">{setting.content[field] ? 'Yes' : 'No'}</span>
+              <button on:click|stopPropagation={() => cycle(setting, field, true)}>&#9655;</button>
+            </div>
+          {/each}
+          <div class="field">
+            <span class="label">Start Page</span>
+            <input
+              class="page-input"
+              type="number"
+              min="1"
+              step="1"
+              value={setting.content.chart_page_base ?? 1}
+              on:change={(e) => handlePageStart(setting, e)}
+            />
           </div>
-        {/each}
-        {#if setting.type !== 'V' && setting.type !== 'C'}
-          <details>
-            <summary>Fonts (12 sources)</summary>
-            {#each ['G','H','M','T','K','KP','J','V','GS','UK','UTC','SAT'] as src, idx}
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <div class="field" class:sel={selMap[selKey(setting, 'font', idx)]} data-selkey={selKey(setting, 'font', idx)}
-                   on:click={(e) => toggleSelect(e, setting, 'font', idx)}
-                   on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,'font',false,idx); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,'font',true,idx); } }}
-                   role="option" aria-selected={!!selMap[selKey(setting, 'font', idx)]} tabindex="0">
-                <span class="label">{src}</span>
-                <button on:click|stopPropagation={() => cycle(setting, 'font', false, idx)}>◁</button>
-                <span class="value">{setting.content.font?.[idx]?.[1] ?? '(none)'}</span>
-                <button on:click|stopPropagation={() => cycle(setting, 'font', true, idx)}>▷</button>
-              </div>
-            {/each}
-          </details>
         {:else}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <div class="field" class:sel={selMap[selKey(setting, 'font')]} data-selkey={selKey(setting, 'font')}
-               on:click={(e) => toggleSelect(e, setting, 'font')}
-               on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,'font',false); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,'font',true); } }}
-               role="option" aria-selected={!!selMap[selKey(setting, 'font')]} tabindex="0">
-            <span class="label">Font</span>
-            <button on:click|stopPropagation={() => cycle(setting, 'font', false)}>◁</button>
-            <span class="value">{setting.content.font?.[1] ?? '(none)'}</span>
-            <button on:click|stopPropagation={() => cycle(setting, 'font', true)}>▷</button>
-          </div>
+          <!-- CJK fields -->
+          {#each ['Print', 'Columns', 'Format', 'Title page'] as label, idx}
+            {@const field = ['print', 'column', 'format', 'title'][idx]}
+            <div class="field" class:sel={selMap[selKey(setting, field)]} data-selkey={selKey(setting, field)}
+                 on:click={(e) => toggleSelect(e, setting, field)}
+                 on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,field,false); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,field,true); } }}
+                 role="option" aria-selected={!!selMap[selKey(setting, field)]} tabindex="0">
+              <span class="label">{label}</span>
+              <button on:click|stopPropagation={() => cycle(setting, field, false)}>&#9665;</button>
+              <span class="value">{fieldValue(setting, idx)}</span>
+              <button on:click|stopPropagation={() => cycle(setting, field, true)}>&#9655;</button>
+            </div>
+          {/each}
         {/if}
       </div>
     </details>
@@ -151,4 +167,6 @@
   .value { flex: 1; text-align: center; color: #7f8c8d; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .field button { flex-shrink: 0; background: transparent; border: 1px solid #bdc3c7; border-radius: 4px; padding: 0.1rem 0.4rem; cursor: pointer; }
   .field button:hover { background: #ecf0f1; }
+  .page-input { flex: 1; text-align: center; border: 1px solid #bdc3c7; border-radius: 4px; padding: 0.1rem 0.3rem; font-size: 0.85rem; color: #2c3e50; background: #fff; min-width: 0; }
+  .page-input:focus { outline: none; border-color: #3498db; }
 </style>

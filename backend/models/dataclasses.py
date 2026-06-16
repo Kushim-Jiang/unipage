@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-# ── Bug / diagnostic entry ──────────────────────────────────────────
+# -- Bug / diagnostic entry ------------------------------------------
 
 
 @dataclass
@@ -39,7 +39,7 @@ class BugEntry:
         return cls(severity=raw[0], code=raw[1], filename=raw[2], detail=raw[3] if len(raw) > 3 else "")
 
 
-# ── Resource entry ──────────────────────────────────────────────────
+# -- Resource entry --------------------------------------------------
 
 
 @dataclass
@@ -73,7 +73,7 @@ class ResourceEntry:
         )
 
 
-# ── Block info ──────────────────────────────────────────────────────
+# -- Block info ------------------------------------------------------
 
 
 @dataclass
@@ -82,7 +82,8 @@ class BlockInfo:
 
     Attributes:
         name: Block name (e.g. ``"CJK Unified Ideographs"``).
-        type: Block type — ``"C"``, ``"W"``, ``"H"``, or ``"V"``.
+        type: Block type -- ``"RF-W"``, ``"RF-H"``, ``"RF-V"``, ``"RS-W"``,
+            ``"RS-H"``, or ``"NL"`` (NamesList).
         start_cp: First codepoint (inclusive).
         end_cp: Last codepoint (inclusive).
         content: Inner data dict.  Structure varies by block type.
@@ -116,7 +117,7 @@ class BlockInfo:
         )
 
 
-# ── Block setting ───────────────────────────────────────────────────
+# -- Block setting ---------------------------------------------------
 
 
 @dataclass
@@ -159,7 +160,7 @@ class BlockSetting:
         )
 
 
-# ── Proof layout ────────────────────────────────────────────────────
+# -- Proof layout ----------------------------------------------------
 
 
 @dataclass
@@ -194,7 +195,7 @@ class ProofLayout:
         return d
 
 
-# ── Project info ────────────────────────────────────────────────────
+# -- Project info ----------------------------------------------------
 
 
 @dataclass
@@ -221,47 +222,39 @@ class ProjectInfo:
         )
 
 
-# ── Resource collection ─────────────────────────────────────────────
+# -- Resource collection ---------------------------------------------
 
 
 @dataclass
 class ResourceCollection:
-    """Typed container for all resource file lists in a project.
-
-    Replaces the previous ``dict`` with string keys so that
-    attribute access (``rc.project``) works instead of dict
-    lookups (``rc["project"]``).
-    """
+    """Typed container for all resource file lists in a project."""
 
     project: list[ResourceEntry] = field(default_factory=list)
-    block: list[ResourceEntry] = field(default_factory=list)
     font: list[ResourceEntry] = field(default_factory=list)
-    attribute: list[ResourceEntry] = field(default_factory=list)
+    data: list[ResourceEntry] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, list]:
         return {
             "project": resource_list_to_raw(self.project),
-            "block": resource_list_to_raw(self.block),
             "font": resource_list_to_raw(self.font),
-            "attribute": resource_list_to_raw(self.attribute),
+            "data": resource_list_to_raw(self.data),
         }
 
     @classmethod
     def from_dict(cls, raw: dict) -> ResourceCollection:
-        """Create from a dict, supporting both old and new key names."""
+        """Create from a dict."""
         return cls(
-            project=resource_list_from_raw(raw.get("project") or raw.get("upj", [])),
-            block=resource_list_from_raw(raw.get("block") or raw.get("blk", [])),
-            font=resource_list_from_raw(raw.get("font") or raw.get("fnt", [])),
-            attribute=resource_list_from_raw(raw.get("attribute") or raw.get("att", [])),
+            project=resource_list_from_raw(raw.get("project", [])),
+            font=resource_list_from_raw(raw.get("font", [])),
+            data=resource_list_from_raw(raw.get("data", [])),
         )
 
     def all(self) -> list[ResourceEntry]:
         """Return every resource entry across all categories."""
-        return self.project + self.block + self.font + self.attribute
+        return self.project + self.font + self.data
 
 
-# ── Helper: resource list conversion ────────────────────────────────
+# -- Helper: resource list conversion --------------------------------
 
 
 def resource_list_from_raw(raw_list: list) -> list[ResourceEntry]:
