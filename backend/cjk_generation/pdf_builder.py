@@ -17,7 +17,7 @@ from typing import Optional
 import cairosvg
 from fpdf import FPDF
 
-from backend.cjk_generation.fonts import use_font
+from backend.cjk_generation.fonts import CJKRadicals, LiberationSansNarrow_Regular, use_font
 from backend.cjk_generation.layout import CjkPageData
 from backend.cjk_generation.svg_builder import build_svg_glyphs
 from backend.file_management.parser import ParseError, show_rs
@@ -313,15 +313,23 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                     )
                 )
                 for ri, rs_val in enumerate(data.rs_values[idx]):
-                    page.text_spans.append(
-                        TextSpan.make(
-                            show_rs(rs_val),
-                            "LiberationSansNarrow-Regular",
-                            6,
-                            nx[0] + bi * cw,
-                            ny[2] + li * lay.row_gy + ri * _NONIVD_RS_GAP,
+                    rs_text = show_rs(rs_val)
+                    if rs_text and "\u3000" in rs_text:
+                        radical, number = rs_text.split("\u3000", 1)
+                        rx = nx[0] + bi * cw
+                        ry = ny[2] + li * lay.row_gy + ri * _NONIVD_RS_GAP
+                        page.text_spans.append(TextSpan.make(radical, CJKRadicals, 6, rx, ry))
+                        page.text_spans.append(TextSpan.make(number, LiberationSansNarrow_Regular, 6, rx + 7, ry))
+                    elif rs_text:
+                        page.text_spans.append(
+                            TextSpan.make(
+                                rs_text,
+                                LiberationSansNarrow_Regular,
+                                6,
+                                nx[0] + bi * cw,
+                                ny[2] + li * lay.row_gy + ri * _NONIVD_RS_GAP,
+                            )
                         )
-                    )
             else:
                 page.text_spans.append(
                     TextSpan.make(
@@ -472,6 +480,9 @@ def generate_pdf(
     font_dir = proj.project_info.project_dir if proj else output_dir
     font_set = _collect_fonts(pages_data)
     extra_fonts = [(f[0], "", basename(f[1])) for f in font_set if f[1]]
+    # Register CJK Radicals font for RS radical characters
+    radicals_ttf = f"{dirname(dirname(dirname(__file__)))}/data/CJKRadicals-Regular.ttf"
+    extra_fonts.append((CJKRadicals, "", radicals_ttf))
 
     # -- Create PDF ----------------------------------------------
     pdf = FPDF(unit="pt", format="letter")

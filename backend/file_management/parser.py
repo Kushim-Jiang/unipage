@@ -73,24 +73,28 @@ _RS_VARIANTS: dict[str, str] = {
     "196'": "\u2ee6",
     "197'": "\u2ee7",
     "199'": "\u2ee8",
+    "201'": "\u2ee9",
     "205'": "\u2eea",
     "210'": "\u2eec",
     "211'": "\u2eee",
     "212'": "\u2ef0",
     "213'": "\u2ef3",
-    '213"': "\u2ef2",
-    '210"': "\u2eeb",
-    '211"': "\u2eed",
-    '212"': "\u2eef",
-    '208"': "\u2ef4",
-    '182"': "\u2ef5",
+    # Double-prime variants
+    "182''": "\U000322c4",
+    "208''": "\u9f21",
+    "210''": "\u2eeb",
+    "211''": "\u2eed",
+    "212''": "\u2eef",
+    "213''": "\u2ef2",
+    # Triple-prime variant
+    "212'''": "\U00031de5",
 }
 
 
 def show_rs(rs: str) -> str | None:
     """Format a radical-stroke value like ``'90.0'`` into a display string."""
     key = rs.split(".")[0]
-    if "'" not in key and '"' not in key:
+    if "'" not in key:
         num = int(key)
         if 1 <= num <= 214:
             return chr(0x2EFF + num) + "\u3000" + rs
