@@ -81,6 +81,8 @@ def register_fonts(
         ("LiberationSerif", "", "LiberationSerif-Regular.ttf"),
         # SpecialsUC6 for Unicode chart reserved-cell markers
         ("SpecialsUC6", "", "SpecialsUC6-20240723.ttf"),
+        # CJK Radicals for RS radical characters
+        ("CJKRadicals-Light", "", "CJKRadicals-Light.ttf"),
     ]
 
     if extra_fonts:

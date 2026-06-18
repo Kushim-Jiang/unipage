@@ -15,7 +15,7 @@ LiberationSans_Regular = "LiberationSans-Regular"
 LiberationSans_Bold = "LiberationSans-Bold"
 LiberationSansNarrow_Regular = "LiberationSansNarrow-Regular"
 LiberationSerif_Regular = "LiberationSerif-Regular"
-CJKRadicals = "CJKRadicals"
+CJKRadicals = "CJKRadicals-Light"
 
 # -- fpdf2 (family, style) mapping ----------------------------------
 
@@ -26,7 +26,7 @@ FONT_MAP = {
     LiberationSans_Bold: ("LiberationSans", "B"),
     LiberationSansNarrow_Regular: ("LiberationSansNarrow", ""),
     LiberationSerif_Regular: ("LiberationSerif", ""),
-    CJKRadicals: ("CJKRadicals", ""),
+    CJKRadicals: ("CJKRadicals-Light", ""),
 }
 
 _FALLBACK = ("LiberationSans", "")

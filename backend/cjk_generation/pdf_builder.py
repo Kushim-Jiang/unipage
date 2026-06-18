@@ -480,9 +480,6 @@ def generate_pdf(
     font_dir = proj.project_info.project_dir if proj else output_dir
     font_set = _collect_fonts(pages_data)
     extra_fonts = [(f[0], "", basename(f[1])) for f in font_set if f[1]]
-    # Register CJK Radicals font for RS radical characters
-    radicals_ttf = f"{dirname(dirname(dirname(__file__)))}/data/CJKRadicals-Regular.ttf"
-    extra_fonts.append((CJKRadicals, "", radicals_ttf))
 
     # -- Create PDF ----------------------------------------------
     pdf = FPDF(unit="pt", format="letter")
