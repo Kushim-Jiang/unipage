@@ -600,6 +600,7 @@ class NonCjkPdfRequest(BaseModel):
     title_page: bool = True
     yellow: list[int] = []
     purple: list[int] = []
+    draft_mode: bool = False
 
 
 class NonCjkCycleRequest(BaseModel):
@@ -701,6 +702,7 @@ def generate_non_cjk_pdf(req: NonCjkPdfRequest):
             nameslist_entries=all_entries,
             assigned_cps=assigned_cps,
             combining_cps=combining_cps,
+            draft_mode=req.draft_mode,
         )
 
         render_pdf(
@@ -921,6 +923,9 @@ def cycle_non_cjk_option(req: NonCjkCycleRequest):
         setting.content["print"] = (setting.content.get("print", 1) + delta) % 2
     elif req.field == "title_page":
         setting.content["title_page"] = (setting.content.get("title_page", 1) + delta) % 2
+    elif req.field == "draft_mode":
+        current = bool(setting.content.get("draft_mode", False))
+        setting.content["draft_mode"] = int(not current)
 
     proj.save()
     return {"status": "ok", "setting": setting.to_dict()}
@@ -1049,6 +1054,7 @@ def _run_generate_all_non_cjk(proj, targets, total, use_state=True):
                 nameslist_entries=all_entries,
                 assigned_cps=assigned_cps,
                 combining_cps=combining_cps,
+                draft_mode=setting.content.get("draft_mode", False),
             )
 
             render_pdf(

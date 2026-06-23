@@ -113,8 +113,8 @@
       <div class="fields">
         {#if isNL(setting)}
           <!-- Non‑CJK fields -->
-          {#each ['Print', 'Title Page'] as label, idx}
-            {@const field = ['print', 'title_page'][idx]}
+          {#each ['Print', 'Title Page', 'Draft Mode'] as label, idx}
+            {@const field = ['print', 'title_page', 'draft_mode'][idx]}
             <div class="field" class:sel={selMap[selKey(setting, field)]} data-selkey={selKey(setting, field)}
                  on:click={(e) => toggleSelect(e, setting, field)}
                  on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,field,false); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,field,true); } }}

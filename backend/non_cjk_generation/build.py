@@ -42,6 +42,7 @@ def build_pdf(
     block_name: str = "",
     start_cp: int = 0,
     end_cp: int = 0,
+    draft_mode: bool = False,
 ) -> str:
     """Run the full pipeline: parse -> layout -> render.
 
@@ -78,6 +79,7 @@ def build_pdf(
         column_count=column_count,
         ucd_path=ucd_path,
         font_dir=font_dir,
+        draft_mode=draft_mode,
     )
 
     print(f"  Generated {len(pages_data)} pages:")
@@ -100,6 +102,8 @@ def build_pdf(
         output_path=output_path,
         font_dir=font_dir,
         ucd_path=ucd_path if ucd_path else None,
+        block_start_cp=start_cp,
+        block_end_cp=end_cp,
     )
 
     return output_path
@@ -132,6 +136,7 @@ def main():
     parser.add_argument("--short-version", type=str, default="17.0", help="Short version")
     parser.add_argument("--year", type=str, default="2025", help="Copyright year")
     parser.add_argument("--columns", type=int, default=24, help="Code chart columns")
+    parser.add_argument("--draft-mode", action="store_true", help="Renumber all code points sequentially from 0")
 
     args = parser.parse_args()
 
@@ -160,6 +165,7 @@ def main():
         block_name=args.block or "",
         start_cp=start_cp,
         end_cp=end_cp,
+        draft_mode=args.draft_mode,
     )
 
 

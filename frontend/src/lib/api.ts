@@ -192,6 +192,7 @@ export interface NonCjkPdfRequest {
   title_page: boolean;
   yellow: number[];
   purple: number[];
+  draft_mode: boolean;
 }
 
 export function generateNonCjkPdf(req: NonCjkPdfRequest) {

@@ -195,6 +195,36 @@ class BlockInfo:
     column_count: int = 24
     char_count: int = 16
     grid_left: float | None = None  # override auto-centering; None = auto
+    draft_mode: bool = False  # renumber all code points sequentially from 0
+
+    @property
+    def block_size(self) -> int:
+        """Total number of code points in this block."""
+        return self.end_cp - self.start_cp + 1
+
+    def draft_cp(self, original_cp: int) -> int:
+        """Map an original code point to its draft (zero-based) number."""
+        return original_cp - self.start_cp
+
+    def format_draft_cp(self, draft_value: int) -> str:
+        """Format a draft code point value according to block size rules.
+
+        Uses literal 'x' as placeholder, uppercase hex digits:
+
+        - ≤16:   xxx0-xxxF    (3 x's + 1 hex digit)
+        - ≤256:  xx00-xxFF    (2 x's + 2 hex digits)
+        - ≤4096: x000-xFFF    (1 x   + 3 hex digits)
+        - ≤65534: x0000-xFFFD (1 x   + 4 hex digits)
+        """
+        sz = self.block_size
+        if sz <= 16:
+            return f"xxx{draft_value:01X}"
+        elif sz <= 256:
+            return f"xx{draft_value:02X}"
+        elif sz <= 4096:
+            return f"x{draft_value:03X}"
+        else:
+            return f"x{draft_value:04X}"
 
 
 @dataclass

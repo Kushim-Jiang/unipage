@@ -635,6 +635,7 @@ def default_non_cjk_setting(block_name: str, start_cp: int, end_cp: int) -> dict
         "chart_page_base": 1,
         "yellow": [],
         "purple": [],
+        "draft_mode": False,
     }
 
 

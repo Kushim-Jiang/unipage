@@ -97,7 +97,10 @@ def compute_title_page(ctx: LayoutContext, title_md_path: str = "", cfg: TitlePa
     )
 
     # -- Line 1: Range --------------------------------------
-    range_text = f"Range: {block.start_cp:04X}\u2013{block.end_cp:04X}"
+    if block.draft_mode:
+        range_text = f"Range: {block.format_draft_cp(0)}\u2013{block.format_draft_cp(block.block_size - 1)}"
+    else:
+        range_text = f"Range: {block.start_cp:04X}\u2013{block.end_cp:04X}"
     w = fm.measure(cfg.range_font[0], cfg.range_font[1], range_text)
     spans.append(
         TextSpan(
@@ -143,9 +146,14 @@ def _parse_title_md(filepath: str, ctx: LayoutContext, cfg: TitlePageConfig, fm=
         content = f.read()
 
     # Substitute placeholders
-    content = content.replace("[name]", ctx.block.name if ctx.block else "")
-    content = content.replace("[start]", f"{ctx.block.start_cp:04X}" if ctx.block else "")
-    content = content.replace("[end]", f"{ctx.block.end_cp:04X}" if ctx.block else "")
+    block = ctx.block
+    content = content.replace("[name]", block.name if block else "")
+    if block and block.draft_mode:
+        content = content.replace("[start]", block.format_draft_cp(0))
+        content = content.replace("[end]", block.format_draft_cp(block.block_size - 1))
+    else:
+        content = content.replace("[start]", f"{block.start_cp:04X}" if block else "")
+        content = content.replace("[end]", f"{block.end_cp:04X}" if block else "")
     content = content.replace("[version-long]", ctx.version)
     content = content.replace("[version]", ctx.short_version)
     content = content.replace("[year]", ctx.year)
@@ -423,19 +431,28 @@ class ChartPageBuilder:
         pt = self.page_type
         g = self.grid
         xs = shift_x(82.80, pt)
+
+        if block.draft_mode:
+            start_label = block.format_draft_cp(0)
+            pe = block.draft_cp(block.start_cp + self.col_end * 16 - 1)
+            if self.is_last_page:
+                pe = block.draft_cp(block.end_cp)
+            end_label = block.format_draft_cp(pe)
+        else:
+            start_label = _hex4(block.start_cp)
+            pe = block.start_cp + self.col_end * 16 - 1
+            if self.is_last_page:
+                pe = block.end_cp
+            end_label = _hex4(pe)
+
         name_w = measure_text(FONT_CHART_HEADER[0], FONT_CHART_HEADER[1], block.name)
         xn = shift_x(PAGE_W / 2 - name_w / 2, pt)
-
-        pe = block.start_cp + self.col_end * 16 - 1
-        if self.is_last_page:
-            pe = block.end_cp
-        end_text = _hex4(pe)
-        end_w = measure_text(FONT_CHART_HEADER[0], FONT_CHART_HEADER[1], end_text)
+        end_w = measure_text(FONT_CHART_HEADER[0], FONT_CHART_HEADER[1], end_label)
         xe = shift_x(g.chart_header_right - end_w, pt)
 
         self.page.text_spans.append(
             TextSpan(
-                text=_hex4(block.start_cp),
+                text=start_label,
                 font=FONT_CHART_HEADER[0],
                 size=FONT_CHART_HEADER[1],
                 origin=[xs, g.header_y],
@@ -454,7 +471,7 @@ class ChartPageBuilder:
         self.page.drawings.append(Drawing.rect(xn, 34.14, name_w, 13.62))
         self.page.text_spans.append(
             TextSpan(
-                text=end_text,
+                text=end_label,
                 font=FONT_CHART_HEADER[0],
                 size=FONT_CHART_HEADER[1],
                 origin=[xe, g.header_y],
@@ -475,7 +492,11 @@ class ChartPageBuilder:
         gl = self.grid_left
         base = block.start_cp
         for i in range(self.num_cols):
-            text = f"{(base + (self.col_start + i) * 16) >> 4:03X}"
+            if block.draft_mode:
+                col_draft_cp = block.draft_cp(base + (self.col_start + i) * 16)
+                text = block.format_draft_cp(col_draft_cp)[:-1]
+            else:
+                text = f"{(base + (self.col_start + i) * 16) >> 4:03X}"
             text_w = measure_text(FONT_COL_HEADER[0], FONT_COL_HEADER[1], text)
             cell_left = gl + i * g.cell_w
             x = shift_x(cell_left + (g.cell_w - text_w) / 2, pt)
@@ -531,6 +552,11 @@ class ChartPageBuilder:
                     break
                 fc = self.font_map.get(cp)
                 gy = g.first_glyph_y + row * g.cell_row_h
+                # Compute draft label if draft_mode is enabled
+                if block.draft_mode:
+                    label_text = block.format_draft_cp(block.draft_cp(cp))
+                else:
+                    label_text = _hex4(cp)
                 if fc and cp in assigned:
                     ch = self.fm.resolve_glyph_char(cp, fc)
                     if not ch:
@@ -568,7 +594,6 @@ class ChartPageBuilder:
                             )
                         )
                     # Codepoint label
-                    label_text = _hex4(cp)
                     label_w = measure_text(FONT_CP_LABEL[0], FONT_CP_LABEL[1], label_text)
                     lx = cc - label_w / 2
                     self.page.text_spans.append(
@@ -900,12 +925,17 @@ class InfoPageBuilder:
         g = _grid
         xs = shift_x(82.80, pt)
         xn = shift_x(285.90, pt)
-        end_text = f"{last_cp:04X}"
+        if block and block.draft_mode:
+            start_text = block.format_draft_cp(block.draft_cp(first_cp))
+            end_text = block.format_draft_cp(block.draft_cp(last_cp))
+        else:
+            start_text = f"{first_cp:04X}"
+            end_text = f"{last_cp:04X}"
         end_w = measure_text(FONT_INFO_HEADER[0], FONT_INFO_HEADER[1], end_text)
         xe = shift_x(g.info_header_right - end_w, pt)
         page.text_spans.append(
             TextSpan(
-                text=f"{first_cp:04X}",
+                text=start_text,
                 font=FONT_INFO_HEADER[0],
                 size=FONT_INFO_HEADER[1],
                 origin=[xs, g.header_y],
@@ -935,6 +965,17 @@ class InfoPageBuilder:
         page.drawings.append(Drawing.rect(xs, 34.14, 24.48, 13.62))
 
     # -- Column layout -------------------------------------
+
+    def _display_cp_str(self, original_cp_str: str) -> str:
+        """Convert an original codepoint hex string to draft format if draft_mode."""
+        block = self.block
+        if block and block.draft_mode:
+            try:
+                cp = int(original_cp_str, 16)
+                return block.format_draft_cp(block.draft_cp(cp))
+            except ValueError:
+                return original_cp_str
+        return original_cp_str
 
     def _column_params(self, is_col2: bool, pt: PageType) -> dict:
         p = self.cfg.column_params(is_col2)
@@ -985,9 +1026,10 @@ class InfoPageBuilder:
                     )
                 )
             elif t == "reserved":
+                cp_display = self._display_cp_str(e["codepoint"])
                 page.text_spans.append(
                     TextSpan(
-                        text=e["codepoint"],
+                        text=cp_display,
                         font=FONT_CP[0],
                         size=FONT_CP[1],
                         origin=[cx, y],
@@ -1013,10 +1055,11 @@ class InfoPageBuilder:
                     )
                 )
             elif t == "char":
-                cp_label_w = fm.measure(FONT_CP[0], FONT_CP[1], e["codepoint"])
+                cp_display = self._display_cp_str(e["codepoint"])
+                cp_label_w = fm.measure(FONT_CP[0], FONT_CP[1], cp_display)
                 page.text_spans.append(
                     TextSpan(
-                        text=e["codepoint"],
+                        text=cp_display,
                         font=FONT_CP[0],
                         size=FONT_CP[1],
                         origin=[cx, y],
@@ -1339,6 +1382,7 @@ def generate_page_structure(
     combining_cps: set[int] | None = None,
     chart_fonts: list[FontConfig] | None = None,
     nameslist_entries: list[NamesListEntry] | None = None,
+    draft_mode: bool = False,
 ) -> list[dict]:
     """Generate a complete page_structure.json as a list of page dicts.
 
@@ -1401,7 +1445,14 @@ def generate_page_structure(
     if column_count <= 0:
         column_count = (end_cp >> 4) - (start_cp >> 4) + 1
 
-    block = BlockInfo(name=block_name, start_cp=start_cp, end_cp=end_cp, column_count=column_count, grid_left=grid_left)
+    block = BlockInfo(
+        name=block_name,
+        start_cp=start_cp,
+        end_cp=end_cp,
+        column_count=column_count,
+        grid_left=grid_left,
+        draft_mode=draft_mode,
+    )
     ctx = LayoutContext(
         version=version,
         short_version=short_version,

@@ -19,6 +19,7 @@
         title_page: !!setting.content.title_page,
         yellow: setting.content.yellow || [],
         purple: setting.content.purple || [],
+        draft_mode: !!setting.content.draft_mode,
       };
       const r = await api.generateNonCjkPdf(req);
       pdfResults = [...pdfResults.filter((x: any) => x.block !== setting.name), { ...r, block: setting.name }];
