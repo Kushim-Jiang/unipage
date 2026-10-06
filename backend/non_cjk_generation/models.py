@@ -316,6 +316,8 @@ class LayoutContext:
     chart_page_base: int = 1
     assigned_cps: set[int] | None = None
     combining_cps: set[int] | None = None
+    # Footer text lines for chart/info pages. None = built-in default.
+    footer_lines: list[str] | None = None
 
 
 @dataclass
@@ -740,7 +742,12 @@ class FontMetrics:
         return self.measure(font_name, font_size, char, path) / 2
 
     def glyph_bbox_width(self, cp: int, fc: "FontConfig") -> float:
-        """Return the bounding-box width of a glyph codepoint in points."""
+        """Return the bounding-box width of a glyph codepoint in points.
+
+        Resolves the glyph through the font's Q offset (the same lookup as
+        :meth:`resolve_glyph_char`) so PUA-encoded charts measure the real
+        glyph instead of falling back to ``.notdef``.
+        """
         try:
             from fontTools.pens.boundsPen import BoundsPen
             from fontTools.ttLib import TTFont
@@ -750,6 +757,8 @@ class FontMetrics:
                 return 13.0
             font = TTFont(path)
             cmap = font.getBestCmap()
+            if cp not in cmap and fc.offset and fc.offset < 0xF0000:
+                cp = fc.range_start + (cp - fc.offset)
             gn = cmap.get(cp, ".notdef")
             gs = font.getGlyphSet()
             if gn in gs:

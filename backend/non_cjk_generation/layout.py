@@ -335,6 +335,27 @@ FONT_ROW_IDX = ("LiberationSans-Regular", 10.0)
 FONT_CP_LABEL = ("LiberationSansNarrow-Regular", 6.0)
 FONT_DOLLAR = ("SpecialsUC6", 22.0)
 
+_MONTHS = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
+
+
+def _default_footer_lines() -> list[str]:
+    """Built-in bottom-left footer (overridable via ``LayoutContext.footer_lines``)."""
+    from datetime import date
+
+    d = date.today()
+    return [
+        f"Printed using Unipage on {d.day} {_MONTHS[d.month - 1]}, {d.year} "
+        "(https://github.com/Kushim-Jiang/unipage)",
+    ]
+
+
+def _footer_lines(ctx: LayoutContext) -> list[str]:
+    """Footer text for chart/info pages: context override, else the built-in default."""
+    return list(ctx.footer_lines) if ctx.footer_lines else _default_footer_lines()
+
 
 def _hex4(v: int) -> str:
     return f"{v:04X}"
@@ -562,7 +583,8 @@ class ChartPageBuilder:
                     if not ch:
                         continue
                     bw = self.fm.glyph_bbox_width(cp, fc)
-                    gx = cc - bw / 2 - 1.0
+                    # Centre on the glyph's ink, not on a fixed bearing guess.
+                    gx = cc - self.fm.glyph_visual_center(fc.font_name, fc.size, ch)
                     if cp in COMB:
                         dx = cc - 7.51
                         self.page.text_spans.append(
@@ -639,32 +661,41 @@ class ChartPageBuilder:
         pt = self.page_type
         g = self.grid
         xl = shift_x(82.80, pt)
+        font_name, font_size = FONT_CHART_FOOTER
+        line_h = font_size + 1.6
+        lines = _footer_lines(self.ctx)
+
         page_num_text = str(self.ctx.chart_page_base + self.page_index)
-        page_num_w = measure_text(FONT_CHART_FOOTER[0], FONT_CHART_FOOTER[1], page_num_text)
+        page_num_w = measure_text(font_name, font_size, page_num_text)
         xp = shift_x(g.chart_footer_right - page_num_w, pt)
-        ct = (
-            f"The Unicode Standard, Version {self.ctx.short_version}, "
-            f"Copyright \u00a9 1991-{self.ctx.year} Unicode, Inc. All rights reserved."
-        )
-        self.page.text_spans.append(
-            TextSpan(
-                text=ct,
-                font=FONT_CHART_FOOTER[0],
-                size=FONT_CHART_FOOTER[1],
-                origin=[xl, g.footer_y],
-                bbox=[xl, 741.5, xl + 430, 750.5],
+
+        max_w = 0.0
+        for i, text in enumerate(lines):
+            if not text:
+                continue
+            y = g.footer_y + i * line_h
+            w = measure_text(font_name, font_size, text)
+            max_w = max(max_w, w)
+            self.page.text_spans.append(
+                TextSpan(
+                    text=text,
+                    font=font_name,
+                    size=font_size,
+                    origin=[xl, y],
+                    bbox=[xl, y - 7, xl + w, y + 3],
+                )
             )
-        )
         self.page.text_spans.append(
             TextSpan(
                 text=page_num_text,
-                font=FONT_CHART_FOOTER[0],
-                size=FONT_CHART_FOOTER[1],
+                font=font_name,
+                size=font_size,
                 origin=[xp, g.footer_y],
-                bbox=[xp, 741.5, xp + page_num_w, 750.5],
+                bbox=[xp, g.footer_y - 7, xp + page_num_w, g.footer_y + 3],
             )
         )
-        self.page.drawings.append(Drawing.rect(xl, 740.46, 327.72, 10.8))
+        if max_w:
+            self.page.drawings.append(Drawing.rect(xl, 740.46, max_w, 10.8 + (len(lines) - 1) * line_h))
         self.page.drawings.append(Drawing.rect(xp, 740.46, page_num_w, 10.8))
 
 
@@ -1312,32 +1343,41 @@ class InfoPageBuilder:
     def _add_footer(self, page, pn, pt):
         g = _grid
         xl = shift_x(82.80, pt)
+        font_name, font_size = FONT_INFO_FOOTER
+        line_h = font_size + 1.6
+        lines = _footer_lines(self.ctx)
+
         page_num_text = str(pn)
-        page_num_w = measure_text(FONT_INFO_FOOTER[0], FONT_INFO_FOOTER[1], page_num_text)
+        page_num_w = measure_text(font_name, font_size, page_num_text)
         xp = shift_x(g.info_footer_right - page_num_w, pt)
-        ct = (
-            f"The Unicode Standard, Version {self.ctx.short_version}, "
-            f"Copyright \u00a9 1991-{self.ctx.year} Unicode, Inc. All rights reserved."
-        )
-        page.text_spans.append(
-            TextSpan(
-                text=ct,
-                font=FONT_INFO_FOOTER[0],
-                size=FONT_INFO_FOOTER[1],
-                origin=[xl, g.footer_y],
-                bbox=[xl, 741.5, xl + 430, 750.5],
+
+        max_w = 0.0
+        for i, text in enumerate(lines):
+            if not text:
+                continue
+            y = g.footer_y + i * line_h
+            w = measure_text(font_name, font_size, text)
+            max_w = max(max_w, w)
+            page.text_spans.append(
+                TextSpan(
+                    text=text,
+                    font=font_name,
+                    size=font_size,
+                    origin=[xl, y],
+                    bbox=[xl, y - 7, xl + w, y + 3],
+                )
             )
-        )
         page.text_spans.append(
             TextSpan(
                 text=page_num_text,
-                font=FONT_INFO_FOOTER[0],
-                size=FONT_INFO_FOOTER[1],
+                font=font_name,
+                size=font_size,
                 origin=[xp, g.footer_y],
-                bbox=[xp, 741.5, xp + page_num_w, 750.5],
+                bbox=[xp, g.footer_y - 7, xp + page_num_w, g.footer_y + 3],
             )
         )
-        page.drawings.append(Drawing.rect(xl, 740.46, 327.72, 10.8))
+        if max_w:
+            page.drawings.append(Drawing.rect(xl, 740.46, max_w, 10.8 + (len(lines) - 1) * line_h))
         page.drawings.append(Drawing.rect(xp, 740.46, page_num_w, 10.8))
 
 
@@ -1383,6 +1423,7 @@ def generate_page_structure(
     chart_fonts: list[FontConfig] | None = None,
     nameslist_entries: list[NamesListEntry] | None = None,
     draft_mode: bool = False,
+    footer_lines: list[str] | None = None,
 ) -> list[dict]:
     """Generate a complete page_structure.json as a list of page dicts.
 
@@ -1406,6 +1447,7 @@ def generate_page_structure(
     extra_font_dirs: Additional directories to search for font files
         (e.g. block-specific .ttf files alongside block data).
     combining_cps: Set of codepoints that are combining marks (for dotted-circle display)
+    footer_lines: Bottom-left footer text lines; None uses the built-in default.
 
     Returns
     -------
@@ -1465,6 +1507,7 @@ def generate_page_structure(
         chart_page_base=chart_page_base,
         assigned_cps=assigned_cps,
         combining_cps=combining_cps,
+        footer_lines=footer_lines,
     )
 
     # Parse or use provided CFL / NamesList

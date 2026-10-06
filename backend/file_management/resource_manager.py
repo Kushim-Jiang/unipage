@@ -636,6 +636,7 @@ def default_non_cjk_setting(block_name: str, start_cp: int, end_cp: int) -> dict
         "yellow": [],
         "purple": [],
         "draft_mode": False,
+        "footer": [],
     }
 
 

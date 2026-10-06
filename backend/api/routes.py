@@ -675,6 +675,7 @@ def generate_non_cjk_pdf(req: NonCjkPdfRequest):
     # Get chart_page_base from settings if available
     setting = proj.get_setting(req.block_name)
     chart_page_base = setting.content.get("chart_page_base", 1) if setting else 1
+    footer_lines = (setting.content.get("footer") if setting else None) or None
 
     try:
         from backend.non_cjk_generation.layout import generate_page_structure
@@ -703,6 +704,7 @@ def generate_non_cjk_pdf(req: NonCjkPdfRequest):
             assigned_cps=assigned_cps,
             combining_cps=combining_cps,
             draft_mode=req.draft_mode,
+            footer_lines=footer_lines,
         )
 
         render_pdf(
@@ -1055,6 +1057,7 @@ def _run_generate_all_non_cjk(proj, targets, total, use_state=True):
                 assigned_cps=assigned_cps,
                 combining_cps=combining_cps,
                 draft_mode=setting.content.get("draft_mode", False),
+                footer_lines=setting.content.get("footer") or None,
             )
 
             render_pdf(
