@@ -26,15 +26,17 @@ from __future__ import annotations
 import argparse
 import json
 
+from backend.pathutil import PathLike, as_path, require_path, to_str
+
 
 def build_pdf(
-    cfl_path: str = "",
-    nameslist_path: str = "",
-    data_tsv_path: str = "",
-    font_dir: str = "",
-    ucd_path: str = "",
-    output_path: str = "output.pdf",
-    structure_path: str = "",
+    cfl_path: PathLike = "",
+    nameslist_path: PathLike = "",
+    data_tsv_path: PathLike = "",
+    font_dir: PathLike = "",
+    ucd_path: PathLike = "",
+    output_path: PathLike = "output.pdf",
+    structure_path: PathLike = "",
     version: str = "17.0.0",
     short_version: str = "17.0",
     year: str = "2025",
@@ -87,8 +89,9 @@ def build_pdf(
         print(f"    Page {p['page_num']}: {len(p['text_spans'])} spans, {len(p['drawings'])} drawings")
 
     if structure_path:
-        with open(structure_path, "w", encoding="utf-8") as f:
-            json.dump(pages_data, f, indent=2, ensure_ascii=False)
+        require_path(structure_path, "structure_path").write_text(
+            json.dumps(pages_data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         print(f"  Saved structure to {structure_path}")
 
     # -- Step 2: Render PDF -----------------------------------
@@ -101,12 +104,12 @@ def build_pdf(
         pages_data=pages_data,
         output_path=output_path,
         font_dir=font_dir,
-        ucd_path=ucd_path if ucd_path else None,
+        ucd_path=as_path(ucd_path),
         block_start_cp=start_cp,
         block_end_cp=end_cp,
     )
 
-    return output_path
+    return to_str(output_path)
 
 
 def main():

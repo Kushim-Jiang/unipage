@@ -12,10 +12,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 from json import JSONDecodeError, load
-from os.path import basename
+from pathlib import Path
 from re import compile as _compile
 
 from backend.models.dataclasses import BlockInfo, BugEntry
+from backend.pathutil import PathLike, require_path
 
 # -- Source name helpers ----------------------------------------------
 
@@ -123,7 +124,7 @@ def _encode(line: str) -> str:
 
 
 def _bug(severity: int, code: str, url: str, detail: str = "") -> BugEntry:
-    return BugEntry(severity, code, basename(url), detail)
+    return BugEntry(severity, code, Path(url).name, detail)
 
 
 def _handle_exc(exc: Exception, url: str, line: str = "") -> BugEntry:
@@ -137,9 +138,9 @@ def _handle_exc(exc: Exception, url: str, line: str = "") -> BugEntry:
     return _bug(0, "C000", url, f"{name}: {_encode(line)}")
 
 
-def _read_lines(path: str):
+def _read_lines(path: PathLike):
     """Yield stripped non-empty lines until ``# EOF`` (UTF-8, BOM tolerated)."""
-    with open(path, "r", encoding="utf-8-sig") as fp:
+    with require_path(path).open("r", encoding="utf-8-sig") as fp:
         for raw in fp:
             line = raw.strip()
             if line.lower() == "# eof":
@@ -156,7 +157,7 @@ _BLK_TYPES = {"RF-W", "RF-H", "RF-V"}
 _ATT_TYPES = {"RS-W", "RS-H", "NL", "CD", "FT"}
 
 
-def detect_tsv_type(path: str) -> str:
+def detect_tsv_type(path: PathLike) -> str:
     """Detect the internal type of a .tsv data file from its header.
 
     Returns the type code: ``'RF-W'``, ``'RF-H'``, ``'RF-V'`` (blocks),
@@ -164,7 +165,7 @@ def detect_tsv_type(path: str) -> str:
     or ``'unknown'``.
     """
     try:
-        with open(path, "r", encoding="utf-8-sig") as fp:
+        with require_path(path).open("r", encoding="utf-8-sig") as fp:
             for raw in fp:
                 line = raw.strip()
                 if line and line[0] == "#":
@@ -184,11 +185,11 @@ def detect_tsv_type(path: str) -> str:
 # ==================================================================
 
 
-def parse_project_file(path: str) -> tuple[dict | list, list[BugEntry]]:
+def parse_project_file(path: PathLike) -> tuple[dict | list, list[BugEntry]]:
     """Parse a ``.json`` (project) file."""
     bugs: list[BugEntry] = []
     try:
-        with open(path, "r", encoding="utf-8-sig") as fp:
+        with require_path(path).open("r", encoding="utf-8-sig") as fp:
             content = load(fp)
     except JSONDecodeError as exc:
         content = {}
@@ -199,7 +200,7 @@ def parse_project_file(path: str) -> tuple[dict | list, list[BugEntry]]:
     return content, bugs
 
 
-def parse_block_file(path: str) -> tuple[list[BlockInfo], list[BugEntry]]:
+def parse_block_file(path: PathLike) -> tuple[list[BlockInfo], list[BugEntry]]:
     """Parse a ``.tsv`` block (Unicode block) file.
 
     Returns (blocks, bugs).  Each block is a ``BlockInfo``.
@@ -329,7 +330,7 @@ def _parse_block_v_line(cont: dict, line: str, *args) -> int | None:
 _RS_PATTERN = _compile(r"[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}")
 
 
-def parse_attribute_file(path: str) -> tuple[list[dict], list[BugEntry]]:
+def parse_attribute_file(path: PathLike) -> tuple[list[dict], list[BugEntry]]:
     """Parse a ``.tsv`` attribute file.
 
     Returns (contents, bugs).  Each content dict has key ``inf_cont``

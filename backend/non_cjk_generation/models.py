@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from os.path import exists
+from pathlib import Path
 from typing import Optional
+
+from backend.pathutil import PathLike, as_path
 
 # ==================================================================->
 #  Page geometry
@@ -310,9 +312,9 @@ class LayoutContext:
     block: Optional[BlockInfo] = None
     cfl_config: list[FontConfig] = field(default_factory=list)
     nameslist: list[NamesListEntry] = field(default_factory=list)
-    font_dir: str = ""
-    extra_font_dirs: list[str] = field(default_factory=list)
-    title_md_path: str = ""
+    font_dir: PathLike = ""
+    extra_font_dirs: list[PathLike] = field(default_factory=list)
+    title_md_path: Optional[PathLike] = None
     chart_page_base: int = 1
     assigned_cps: set[int] | None = None
     combining_cps: set[int] | None = None
@@ -511,7 +513,7 @@ def measure_text_precise(
     """Measure text width precisely using fontTools if available."""
     if not text:
         return 0.0
-    if font_path and exists(font_path):
+    if font_path and Path(font_path).is_file():
         try:
             from fontTools.ttLib import TTFont
 
@@ -545,7 +547,7 @@ def measure_glyph_visual_center(
     The visual center is (xMin + xMax) / 2 in font units, scaled to points.
     A positive return means the visual center is to the RIGHT of the origin.
     """
-    if not char or not font_path or not exists(font_path):
+    if not char or not font_path or not Path(font_path).is_file():
         return measure_text_precise(font_name, font_size, char, font_path) / 2
     try:
         from fontTools.pens.boundsPen import BoundsPen
@@ -653,35 +655,30 @@ class FontMetrics:
         center = fm.glyph_visual_center("OpenSans-Bold", 22, "A")
     """
 
-    def __init__(self, font_dir: str = "", extra_dirs: list[str] | None = None):
-        self._font_dir: str = font_dir
-        self._extra_dirs: list[str] = extra_dirs or []
-        self._font_path_cache: dict[str, str | None] = {}
+    def __init__(self, font_dir: PathLike = "", extra_dirs: list[PathLike] | None = None):
+        self._font_dir = as_path(font_dir)
+        self._extra_dirs = [p for p in (as_path(d) for d in extra_dirs or []) if p is not None]
+        self._font_path_cache: dict[str, Path | None] = {}
         self._font_data_cache: dict[str, dict] = {}
 
     # -- Font file path resolution --------------------------
 
-    def resolve_font_path(self, font_name: str) -> str | None:
+    def resolve_font_path(self, font_name: str) -> Path | None:
         """Return the absolute path to a .ttf/.otf file for *font_name*.
 
         Searches *font_dir* first, then each directory in *extra_dirs*.
         """
         if font_name in self._font_path_cache:
             return self._font_path_cache[font_name]
-        from pathlib import Path
 
-        search_dirs = [Path(self._font_dir)] if self._font_dir else []
-        search_dirs += [Path(d) for d in self._extra_dirs]
+        search_dirs = [self._font_dir] if self._font_dir else []
+        search_dirs += self._extra_dirs
         for base in search_dirs:
             for ext in (".ttf", ".otf"):
-                p = base / (font_name + ext)
-                if p.exists():
-                    result = str(p)
-                    break
-            else:
-                continue
-            self._font_path_cache[font_name] = result
-            return result
+                candidate = base / (font_name + ext)
+                if candidate.is_file():
+                    self._font_path_cache[font_name] = candidate
+                    return candidate
         self._font_path_cache[font_name] = None
         return None
 
@@ -691,7 +688,7 @@ class FontMetrics:
         """Measure text width: precise via fontTools if available, else heuristic."""
         if not text:
             return 0.0
-        path = font_path or self.resolve_font_path(font_name)
+        path = as_path(font_path) or self.resolve_font_path(font_name)
         if path:
             try:
                 cached = self._load_font_data(path)
@@ -717,8 +714,8 @@ class FontMetrics:
         """Horizontal offset from glyph origin to visual center (in points)."""
         if not char:
             return 0.0
-        path = font_path or self.resolve_font_path(font_name)
-        if not path or not exists(path):
+        path = as_path(font_path) or self.resolve_font_path(font_name)
+        if path is None or not path.is_file():
             return self.measure(font_name, font_size, char, path) / 2
         try:
             from fontTools.pens.boundsPen import BoundsPen

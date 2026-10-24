@@ -5,7 +5,7 @@ Extracts individual glyph outlines and writes them as standalone SVG files.
 
 from __future__ import annotations
 
-from os.path import basename
+from pathlib import Path
 from re import sub as _sub
 from textwrap import dedent
 from typing import Any, Callable, Optional
@@ -15,10 +15,11 @@ from fontTools.pens import boundsPen, svgPathPen
 from numpy import mean
 
 from backend.cjk_generation.layout import CjkPageData
+from backend.pathutil import PathLike, require_path
 
 # Type aliases
-GlyphDict = dict[tuple, tuple[str, float] | None]
-"""{(cp, font_key) -> (svg_path, glyph_width)}."""
+GlyphDict = dict[tuple, tuple[Path, float] | None]
+"""{((cp, font_key) | ("fix", font_key)) -> (svg_path, glyph_width) | fix}."""
 
 
 def _hex_str(val: int) -> str:
@@ -46,10 +47,11 @@ def _resolve_glyph_name(cp: Any, font: ttLib.TTFont, font_cmap: dict) -> tuple[s
 
 def build_svg_glyphs(
     pages: list[CjkPageData],
-    svg_dir: str,
+    svg_dir: PathLike,
     progress_callback: Optional[Callable[[float], None]] = None,
 ) -> GlyphDict | tuple[str, str]:
     """Generate SVG files for all unique glyphs used across pages."""
+    out_dir = require_path(svg_dir, "svg_dir")
     # Collect unique (glyph, font) pairs
     glyph_set: set[tuple] = set()
     for page in pages:
@@ -87,7 +89,7 @@ def build_svg_glyphs(
         for cp in cps:
             label, glyph_name = _resolve_glyph_name(cp, font, font_cmap)
             if glyph_name is None:
-                return (basename(font_key[1]), label)
+                return (Path(font_key[1]).name, label)
             glyph = font_gs[glyph_name]
             pen = svgPathPen.SVGPathPen(font_gs)
             glyph.draw(pen)
@@ -106,10 +108,9 @@ def build_svg_glyphs(
                     </g>
                 </svg>
             """)
-            fname = f"{_sub(r'\.', '_', basename(font_key[1]))}" f"_{_sub(r'\.', '_', glyph_name)}.svg"
-            fpath = f"{svg_dir}{fname}"
-            with open(fpath, "w") as fp:
-                fp.write(svg)
+            fname = f"{_sub(r'\.', '_', Path(font_key[1]).name)}_{_sub(r'\.', '_', glyph_name)}.svg"
+            fpath = out_dir / fname
+            fpath.write_text(svg, encoding="utf-8")
 
             k = (cp, font_key)
             result[k] = (fpath, w)

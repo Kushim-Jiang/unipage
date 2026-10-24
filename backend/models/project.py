@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from json import dumps
-from os import makedirs, remove as os_remove, replace as os_replace
-from os.path import abspath, basename, exists, join, normcase, splitext
 from re import sub as _sub
+from shutil import copyfile
 from typing import Optional
 
 from backend.models.dataclasses import BlockInfo, BlockSetting, ProjectInfo, ResourceCollection, ResourceEntry
+from backend.pathutil import PathLike, as_path, require_path, same_path, to_stored
 
 
 def sanitize_filename(name: str) -> str:
@@ -92,16 +92,10 @@ class Project:
     def save(self) -> None:
         """Write project data to the .json project file."""
 
-        path = self.project_info.project_file
-        if not path:
-            raise ValueError("project_file not set in project_info")
-        # Ensure directory exists
-        parent = join(path, "..") if "/" in path else None
-        if parent and not exists(parent):
-            makedirs(parent, exist_ok=True)
+        path = require_path(self.project_info.project_file, "project_file")
+        path.parent.mkdir(parents=True, exist_ok=True)
         raw = dumps(self.to_dict(), ensure_ascii=False, indent=2, separators=(",", ":"))
-        with open(path, "w", encoding="utf-8") as fp:
-            fp.write(raw)
+        path.write_text(raw, encoding="utf-8")
 
     @classmethod
     def load(cls, path: str) -> tuple[Project, list]:
@@ -121,56 +115,59 @@ class Project:
     def all_resource_paths(self) -> list[str]:
         return _resource_paths(self.resources)
 
+    def has_resource(self, path: PathLike) -> bool:
+        """Return True when *path* already designates a registered resource."""
+        return any(same_path(url, path) for url in self.all_resource_paths())
+
     def add_resource(
         self,
-        src_path: Optional[str],
-        dest_path: str,
+        src_path: Optional[PathLike],
+        dest_path: PathLike,
         check_status: int,
         parse_data: Optional[list] = None,
     ) -> str:
         """Register a resource. Returns the resource key ('project','font','data')."""
-        from shutil import copyfile
-
-        ext = splitext(dest_path)[1].lower()
+        dest = require_path(dest_path, "dest_path")
+        ext = dest.suffix.lower()
         rsc_key = _ext_to_rsc_key(ext)
         if rsc_key is None:
             raise ValueError(f"Unsupported extension: {ext}")
 
-        if dest_path in self.all_resource_paths():
+        if self.has_resource(dest):
             raise FileExistsError(f"Resource already exists: {dest_path}")
 
-        if src_path and normcase(abspath(src_path)) != normcase(abspath(dest_path)):
+        src = as_path(src_path)
+        if src is not None and not same_path(src, dest):
             # Copy through a temporary file so an interrupted copy cannot
             # destroy an already-present destination.
-            tmp_path = f"{dest_path}.importing"
+            tmp_path = dest.with_name(f"{dest.name}.importing")
             try:
-                copyfile(src_path, tmp_path)
-                os_replace(tmp_path, dest_path)
+                copyfile(src, tmp_path)
+                tmp_path.replace(dest)
             finally:
-                if exists(tmp_path):
-                    os_remove(tmp_path)
+                tmp_path.unlink(missing_ok=True)
 
-        entry = ResourceEntry(basename(dest_path), check_status, dest_path, parse_data)
+        entry = ResourceEntry(dest.name, check_status, to_stored(dest), parse_data)
         getattr(self.resources, rsc_key).append(entry)
         return rsc_key
 
     _ALL_RSC_KEYS = ("project", "font", "data")
 
-    def remove_resource_by_path(self, path: str) -> bool:
+    def remove_resource_by_path(self, path: PathLike) -> bool:
         """Remove a resource by its URL. Returns True if found."""
         for rsc_key in self._ALL_RSC_KEYS:
             rsc_list = getattr(self.resources, rsc_key, [])
             for rsc in list(rsc_list):
-                if rsc.url == path:
+                if same_path(rsc.url, path):
                     rsc_list.remove(rsc)
                     return True
         return False
 
-    def find_resource(self, path: str) -> Optional[ResourceEntry]:
+    def find_resource(self, path: PathLike) -> Optional[ResourceEntry]:
         """Find a resource entry by URL."""
         for rsc_key in self._ALL_RSC_KEYS:
             for rsc in getattr(self.resources, rsc_key, []):
-                if rsc.url == path:
+                if same_path(rsc.url, path):
                     return rsc
         return None
 

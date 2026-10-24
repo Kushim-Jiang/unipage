@@ -7,13 +7,15 @@ the operations that were previously spread across ``tools.py``.
 from __future__ import annotations
 
 from copy import deepcopy
-from os.path import splitext
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Optional
 
 from backend.file_management.parser import parse_attribute_file, parse_block_file, submitter_no
 from backend.file_management.validator import BugEntry, has_errors
 from backend.models.dataclasses import BlockInfo, BlockSetting
 from backend.models.project import VALID_IMPORT_EXTS, Project
+from backend.pathutil import PathLike, require_path
 
 # -- Status constants ------------------------------------------------
 
@@ -32,7 +34,7 @@ def import_resource(
     parse_data: Optional[list] = None,
 ) -> str:
     """Import a resource file into the project. Returns the resource key."""
-    ext = splitext(dest_path)[1].lower()
+    ext = require_path(dest_path, "dest_path").suffix.lower()
     if ext not in VALID_IMPORT_EXTS and ext != ".json":
         raise ValueError(f"C011: Unsupported file extension: {ext}")
     return project.add_resource(src_path, dest_path, check_status, parse_data)
@@ -49,7 +51,7 @@ def remove_resource(project: Project, path: str) -> bool:
 # -- Font parsing ----------------------------------------------------
 
 
-def parse_font_file(path: str) -> tuple[Optional[dict], list]:
+def parse_font_file(path: PathLike) -> tuple[Optional[dict], list]:
     """Validate a TTF/OTF font file and extract basic metadata.
 
     Returns (metadata_dict, bugs_list).
@@ -91,14 +93,14 @@ def parse_font_file(path: str) -> tuple[Optional[dict], list]:
         return None, bugs
 
 
-def parse_and_update(project: Project, path: str) -> list:
+def parse_and_update(project: Project, path: PathLike) -> list:
     """Parse a resource file and update its status in-place.
 
     Supports .tsv (data files) and .ttf/.otf (font files).
     Returns the bug list from parsing.
     """
 
-    ext = splitext(path)[1].lower()
+    ext = require_path(path).suffix.lower()
 
     # -- Font files ---------------------------------------------
     if ext in (".ttf", ".otf"):
@@ -145,9 +147,9 @@ def _get_parser_for_type(tsv_type: str):
     return None
 
 
-def parse_resource(project: Project, path: str) -> tuple[Optional[list], list]:
+def parse_resource(project: Project, path: PathLike) -> tuple[Optional[list], list]:
     """Parse a resource and return (parsed_data, bugs)."""
-    ext = splitext(path)[1].lower()
+    ext = require_path(path).suffix.lower()
     if ext != ".tsv":
         return None, []
     return parse_data_tsv(path)
@@ -160,7 +162,7 @@ def parse_resource(project: Project, path: str) -> tuple[Optional[list], list]:
 _ALL_TSV_TYPES = {"RF-W", "RF-H", "RF-V", "RS-W", "RS-H", "NL", "CD", "FT"}
 
 
-def parse_data_tsv(path: str) -> tuple[dict, list]:
+def parse_data_tsv(path: PathLike) -> tuple[dict, list]:
     """Parse a .tsv file that may contain multiple section types.
 
     Sections are delimited by ``#`` header lines::\n
@@ -169,9 +171,6 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
     Each section is dispatched to the appropriate sub-parser.
     Returns a unified ``parse_data`` dict and bug list.
     """
-    import tempfile
-    import os
-
     bugs: list = []
     result: dict = {}
 
@@ -181,7 +180,7 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
     current_lines: list[str] = []
 
     try:
-        with open(path, "r", encoding="utf-8-sig") as f:
+        with require_path(path).open("r", encoding="utf-8-sig") as f:
             for raw in f:
                 line = raw.rstrip("\r\n")
                 if not line.strip():
@@ -233,12 +232,9 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
         hdr_parts = hdr_line.split(";")
         section_name = hdr_parts[1].strip() if len(hdr_parts) >= 2 else type_code
         safe_name = "".join(c if c.isalnum() or c in "._- " else "_" for c in section_name).strip()[:40]
-        fd, tmp_path = tempfile.mkstemp(suffix=".tsv", prefix=f"unipage_{safe_name}_")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as tf:
-                tf.write(header + "\n")
-                tf.write("\n".join(lines) + "\n")
-                tf.write("# EOF\n")
+        with TemporaryDirectory(prefix=f"unipage_{safe_name}_") as tmp_dir:
+            tmp_path = Path(tmp_dir) / "section.tsv"
+            tmp_path.write_text(header + "\n" + "\n".join(lines) + "\n# EOF\n", encoding="utf-8")
 
             parsed, sec_bugs = parser_fn(tmp_path)
             bugs.extend(sec_bugs)
@@ -261,11 +257,6 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
                     result.update(parsed if isinstance(parsed, dict) else {})
                 elif type_code == "FT":
                     result.update(parsed if isinstance(parsed, dict) else {})
-        finally:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
 
     # -- Assemble result ---------------------------------------
     if not parsed_sections:
@@ -518,7 +509,7 @@ def build_settings(project: Project) -> list[BlockSetting]:
 # ==================================================================
 
 
-def parse_cfl_file(path: str) -> tuple[Optional[list], list]:
+def parse_cfl_file(path: PathLike) -> tuple[Optional[list], list]:
     """Parse a CFL (Character Font List) file.
 
     Returns (parsed_data, bugs).  parsed_data is a list of font config dicts.
@@ -561,7 +552,7 @@ def parse_cfl_file(path: str) -> tuple[Optional[list], list]:
     return result, bugs
 
 
-def parse_nameslist_file(path: str) -> tuple[Optional[dict], list]:
+def parse_nameslist_file(path: PathLike) -> tuple[Optional[dict], list]:
     """Parse a NamesList file and extract block info + entries.
 
     Returns (parsed_data, bugs) where parsed_data is a dict with:
@@ -609,7 +600,7 @@ def _summarize_nameslist_entries(entries: list) -> dict:
     return counts
 
 
-def parse_ucd_file(path: str) -> tuple[Optional[dict], list]:
+def parse_ucd_file(path: PathLike) -> tuple[Optional[dict], list]:
     """Validate and summarize a UnicodeData.txt file.
 
     Returns (parsed_data, bugs).
@@ -619,7 +610,7 @@ def parse_ucd_file(path: str) -> tuple[Optional[dict], list]:
         total = 0
         assigned = 0
         categories: dict[str, int] = {}
-        with open(path, "r", encoding="utf-8-sig") as f:
+        with require_path(path).open("r", encoding="utf-8-sig") as f:
             for line in f:
                 parts = line.strip().split(";")
                 if len(parts) >= 2:

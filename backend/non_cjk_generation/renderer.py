@@ -11,6 +11,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+from backend.pathutil import PathLike, as_path, require_path
+
 
 def to_rgb(val):
     """Convert a color value to (r, g, b) tuple."""
@@ -45,10 +47,10 @@ FALLBACK_FONT = ("LiberationSans", "")
 
 def register_fonts(
     pdf,
-    font_dir: str,
-    system_font_dir: str = "",
+    font_dir: PathLike,
+    system_font_dir: PathLike = "",
     extra_fonts: list[tuple[str, str, str]] | None = None,
-    extra_font_dirs: list[str] | None = None,
+    extra_font_dirs: list[PathLike] | None = None,
 ):
     """Register all required fonts with fpdf2.
 
@@ -90,7 +92,7 @@ def register_fonts(
 
     font_base = Path(font_dir)
     extra_bases = [Path(d) for d in extra_font_dirs] if extra_font_dirs else []
-    sys_base = Path(system_font_dir) if system_font_dir else None
+    sys_base = as_path(system_font_dir)
 
     for family, style, filename in font_registry:
         path = font_base / filename
@@ -267,7 +269,7 @@ class ReservedCellHatcher:
         assigned = set()
         ucd = Path(self.ucd_path)
         if ucd.exists():
-            with open(ucd, "r", encoding="utf-8-sig") as f:
+            with ucd.open("r", encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
                     if not line or not line[0].isalnum():
@@ -362,18 +364,18 @@ def _draw_reserved_cell_lines(
 
 def render_pdf(
     pages_data: list[dict],
-    output_path: str,
-    font_dir: str,
-    ucd_path: Optional[str] = None,
+    output_path: PathLike,
+    font_dir: PathLike,
+    ucd_path: Optional[PathLike] = None,
     font_map: Optional[dict] = None,
     block_start_cp: int = 0,
     block_end_cp: int = 0,
     num_chart_pages: int = 0,
-    system_font_dir: str = "",
+    system_font_dir: PathLike = "",
     num_chart_cols: int = 0,
     extra_fonts: list[tuple[str, str, str]] | None = None,
     extra_font_map: dict[str, tuple[str, str]] | None = None,
-    extra_font_dirs: list[str] | None = None,
+    extra_font_dirs: list[PathLike] | None = None,
     assigned_cps: set[int] | None = None,
 ):
     """Render page structure to a PDF file using fpdf2.
@@ -552,7 +554,9 @@ def render_pdf(
 
         pdf.set_text_color(0, 0, 0)
 
-    pdf.output(str(output_path))
-    fsize = Path(output_path).stat().st_size
-    print(f"Saved: {output_path} ({fsize:,} bytes)")
+    out_path = require_path(output_path, "output_path")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(out_path))
+    fsize = out_path.stat().st_size
+    print(f"Saved: {out_path} ({fsize:,} bytes)")
     print("Done!")

@@ -12,14 +12,15 @@ import re
 from typing import Optional
 
 from backend.non_cjk_generation.models import FontConfig, NamesListEntry
+from backend.pathutil import PathLike, require_path
 
 
-def detect_block_from_nameslist(filepath: str) -> tuple[str, int, int]:
+def detect_block_from_nameslist(filepath: PathLike) -> tuple[str, int, int]:
     """Extract block name and codepoint range from the first @@ header in a NamesList file.
 
     Returns (block_name, start_cp, end_cp).  Returns ("", 0, 0) if not found.
     """
-    with open(filepath, "r", encoding="utf-8-sig") as fp:
+    with require_path(filepath).open("r", encoding="utf-8-sig") as fp:
         for line in fp:
             m = _RE_BLOCK_HEADER.match(line.rstrip("\r\n"))
             if m:
@@ -27,7 +28,7 @@ def detect_block_from_nameslist(filepath: str) -> tuple[str, int, int]:
     return "", 0, 0
 
 
-def split_data_tsv(filepath: str) -> tuple[str, str]:
+def split_data_tsv(filepath: PathLike) -> tuple[str, str]:
     """Split a combined data.tsv into (nameslist_text, cfl_text).
 
     The file uses CJK-style section headers::
@@ -41,7 +42,7 @@ def split_data_tsv(filepath: str) -> tuple[str, str]:
     Returns two strings ready to be passed to ``parse_nameslist`` and
     ``parse_cfl`` respectively.
     """
-    with open(filepath, "r", encoding="utf-8-sig") as f:
+    with require_path(filepath).open("r", encoding="utf-8-sig") as f:
         content = f.read()
 
     # Split on section headers: # ...; NL  and  # ...; FT
@@ -75,13 +76,13 @@ def parse_hex(s: str) -> int:
     return int(s.strip(), 16)
 
 
-def parse_cfl(filepath: str) -> tuple[list[FontConfig], list[FontConfig]]:
+def parse_cfl(filepath: PathLike) -> tuple[list[FontConfig], list[FontConfig]]:
     """Parse a CFL file.  Returns (chart_fonts, common_fonts)."""
     chart_fonts: list[FontConfig] = []
     common_fonts: list[FontConfig] = []
     in_common = False
 
-    with open(filepath, "r", encoding="utf-8-sig") as fp:
+    with require_path(filepath).open("r", encoding="utf-8-sig") as fp:
         for line in fp:
             line = line.strip()
             if not line or line.startswith(";"):
@@ -241,9 +242,9 @@ _RE_VARIATION_PARTS = re.compile(r"^([0-9A-F]{4,6}) (ALT[1-9]|[0-9A-F]{4,6}) (.+
 # ==================================================================->
 
 
-def parse_nameslist(filepath: str) -> list[NamesListEntry]:
+def parse_nameslist(filepath: PathLike) -> list[NamesListEntry]:
     """Parse a Unicode NamesList.txt file per the NamesList Format spec."""
-    with open(filepath, "r", encoding="utf-8-sig") as fp:
+    with require_path(filepath).open("r", encoding="utf-8-sig") as fp:
         lines = [raw.rstrip("\r\n") for raw in fp]
     return parse_nameslist_from_lines(lines)
 

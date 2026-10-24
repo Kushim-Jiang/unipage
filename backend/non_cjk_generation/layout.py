@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from tempfile import mkdtemp
+from typing import Optional
 
 from backend.non_cjk_generation.models import (
     PAGE_W,
@@ -36,6 +38,7 @@ from backend.non_cjk_generation.models import (
     wrap_text,
 )
 from backend.non_cjk_generation.parsers import extract_block_entries, find_font_for_range, parse_cfl, parse_nameslist
+from backend.pathutil import PathLike, require_path
 
 # ==================================================================->
 #  Title page
@@ -57,7 +60,9 @@ def _make_span(text: str, font: str, size: float, x: float, y: float, color: int
     )
 
 
-def compute_title_page(ctx: LayoutContext, title_md_path: str = "", cfg: TitlePageConfig = None) -> Page:
+def compute_title_page(
+    ctx: LayoutContext, title_md_path: Optional[PathLike] = None, cfg: TitlePageConfig = None
+) -> Page:
     """Compute the title/front-matter page layout.
 
     Reads text content from a Markdown template file (title.md) and
@@ -134,7 +139,7 @@ def compute_title_page(ctx: LayoutContext, title_md_path: str = "", cfg: TitlePa
     return page
 
 
-def _parse_title_md(filepath: str, ctx: LayoutContext, cfg: TitlePageConfig, fm=None) -> list:
+def _parse_title_md(filepath: PathLike, ctx: LayoutContext, cfg: TitlePageConfig, fm=None) -> list:
     """Parse title.md into (y, text, font, size) tuples.
 
     Each markdown line maps to one layout line ->no automatic word-wrapping.
@@ -142,7 +147,7 @@ def _parse_title_md(filepath: str, ctx: LayoutContext, cfg: TitlePageConfig, fm=
     """
     from backend.non_cjk_generation.models import wrap_text
 
-    with open(filepath, "r", encoding="utf-8-sig") as f:
+    with require_path(filepath).open("r", encoding="utf-8-sig") as f:
         content = f.read()
 
     # Substitute placeholders
@@ -1411,13 +1416,13 @@ def generate_page_structure(
     short_version: str = "17.0",
     year: str = "2025",
     column_count: int = 0,  # 0 = auto-detect from block range
-    ucd_path: str = "",
-    font_dir: str = "",
-    title_md_path: str = "",
+    ucd_path: PathLike = "",
+    font_dir: PathLike = "",
+    title_md_path: Optional[PathLike] = None,
     chart_page_base: int = 1,
     title_page_config: TitlePageConfig = None,
     grid_left: float | None = None,
-    extra_font_dirs: list[str] | None = None,
+    extra_font_dirs: list[PathLike] | None = None,
     assigned_cps: set[int] | None = None,
     combining_cps: set[int] | None = None,
     chart_fonts: list[FontConfig] | None = None,
@@ -1457,19 +1462,14 @@ def generate_page_structure(
 
     # -- Resolve data source ------------------------------
     if data_tsv_path and not (chart_fonts and nameslist_entries):
-        import os
-        import tempfile
-
         from backend.non_cjk_generation.parsers import split_data_tsv
 
         nl_text, cfl_text = split_data_tsv(data_tsv_path)
-        tmpdir = tempfile.mkdtemp()
-        cfl_path = os.path.join(tmpdir, "fonts.cfl")
-        nameslist_path = os.path.join(tmpdir, "nameslist.txt")
-        with open(cfl_path, "w", encoding="utf-8") as f:
-            f.write(cfl_text)
-        with open(nameslist_path, "w", encoding="utf-8") as f:
-            f.write(nl_text)
+        tmpdir = Path(mkdtemp(prefix="unipage_"))
+        cfl_path = tmpdir / "fonts.cfl"
+        nameslist_path = tmpdir / "nameslist.txt"
+        cfl_path.write_text(cfl_text, encoding="utf-8")
+        nameslist_path.write_text(nl_text, encoding="utf-8")
 
     need_files = not (chart_fonts and nameslist_entries)
     if need_files and (not cfl_path or not nameslist_path):

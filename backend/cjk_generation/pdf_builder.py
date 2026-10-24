@@ -10,8 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from io import BytesIO
 from math import ceil
-from os import makedirs
-from os.path import basename, dirname, exists
+from pathlib import Path
 from typing import Optional
 
 import cairosvg
@@ -22,6 +21,7 @@ from backend.cjk_generation.layout import CjkPageData
 from backend.cjk_generation.svg_builder import build_svg_glyphs
 from backend.file_management.parser import ParseError, show_rs
 from backend.models.dataclasses import ProofLayout
+from backend.pathutil import PROJECT_ROOT, PathLike, require_path, to_str
 from backend.non_cjk_generation.models import Drawing, Page, TextSpan
 from backend.non_cjk_generation.renderer import register_fonts
 
@@ -417,7 +417,7 @@ def _collect_glyph_images(proof: ProofLayout, data: CjkPageData, ctx: CjkPageCon
 
                 try:
                     png_data = cairosvg.svg2png(
-                        url=svg_path,
+                        url=to_str(svg_path),
                         output_width=int(GS * 4),
                         output_height=int(GS * 4),
                         scale=4,
@@ -443,7 +443,7 @@ def _collect_glyph_images(proof: ProofLayout, data: CjkPageData, ctx: CjkPageCon
 
 def generate_pdf(
     proof: ProofLayout,
-    output_dir: str,
+    output_dir: PathLike,
     progress_callback: Optional[callable] = None,
     version: str = "17.0",
     year: str = "2025",
@@ -451,11 +451,11 @@ def generate_pdf(
     """Generate a PDF file from a ProofLayout using fpdf2."""
     from backend.models.dataclasses import BugEntry
 
-    if not exists(output_dir):
-        makedirs(output_dir, exist_ok=True)
+    out_dir = require_path(output_dir, "output_dir")
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    pdf_path = f"{output_dir}/{proof.name}.pdf"
-    open(pdf_path, "w+").close()
+    pdf_path = out_dir / f"{proof.name}.pdf"
+    pdf_path.touch()
 
     lay = CjkLayout.from_proof(proof)
 
@@ -466,9 +466,8 @@ def generate_pdf(
     from backend.models.state import STATE
 
     proj = STATE.project
-    svg_dir = f"{proj.project_info.project_dir}/svg/" if proj else f"{output_dir}/svg/"
-    if not exists(svg_dir):
-        makedirs(svg_dir, exist_ok=True)
+    svg_dir = require_path(proj.project_info.project_dir, "project_dir") / "svg" if proj else out_dir / "svg"
+    svg_dir.mkdir(parents=True, exist_ok=True)
 
     glyph_dict = build_svg_glyphs(pages_data, svg_dir, progress_callback)
     if isinstance(glyph_dict, tuple):
@@ -478,9 +477,9 @@ def generate_pdf(
     proof.glyph_dict = glyph_dict
 
     # Font directory for registration
-    font_dir = proj.project_info.project_dir if proj else output_dir
+    font_dir = require_path(proj.project_info.project_dir, "project_dir") if proj else out_dir
     font_set = _collect_fonts(pages_data)
-    extra_fonts = [(f[0], "", basename(f[1])) for f in font_set if f[1]]
+    extra_fonts = [(f[0], "", Path(f[1]).name) for f in font_set if f[1]]
 
     # -- Create PDF ----------------------------------------------
     pdf = FPDF(unit="pt", format="letter")
@@ -489,7 +488,7 @@ def generate_pdf(
         pdf,
         font_dir,
         extra_fonts=extra_fonts,
-        extra_font_dirs=[f"{font_dir}/data/fonts", f"{dirname(dirname(dirname(__file__)))}/data/fonts"],
+        extra_font_dirs=[font_dir / "data" / "fonts", PROJECT_ROOT / "data" / "fonts"],
     )
 
     # -- Title page ----------------------------------------------
@@ -531,9 +530,8 @@ def generate_pdf(
                 pass
 
     # -- Output --------------------------------------------------
-    pdf.output(pdf_path)
-    fsize = __import__("os").path.getsize(pdf_path)
-    print(f"Saved: {pdf_path} ({fsize:,} bytes)")
+    pdf.output(to_str(pdf_path))
+    print(f"Saved: {pdf_path} ({pdf_path.stat().st_size:,} bytes)")
     print("Done!")
 
-    return pdf_path
+    return to_str(pdf_path)

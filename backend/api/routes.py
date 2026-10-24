@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import threading
-from os.path import abspath, basename, exists, join, splitext
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile
@@ -27,6 +26,7 @@ from backend.file_management.validator import bug_summary
 from backend.models.dataclasses import BugEntry
 from backend.models.project import Project, sanitize_filename
 from backend.models.state import STATE
+from backend.pathutil import PROJECT_ROOT, PathLike, as_path, require_path, to_stored, to_str
 
 # ==================================================================
 # Pydantic schemas
@@ -105,22 +105,23 @@ def create_project(info: ProjectInfo):
 
     from backend.models.dataclasses import ProjectInfo as ProjectInfoDC
 
-    project_dir = info.directory or f"projects/{sanitize_filename(info.name)}"
-    project_file = f"{project_dir}/{sanitize_filename(info.name)}.json"
+    safe_name = sanitize_filename(info.name)
+    project_dir = as_path(info.directory) or Path("projects") / safe_name
+    project_file = project_dir / f"{safe_name}.json"
 
     proj = Project()
     proj.project_info = ProjectInfoDC(
         project_name=info.name,
-        project_dir=project_dir,
-        project_file=project_file,
+        project_dir=to_stored(project_dir),
+        project_file=to_stored(project_file),
     )
-    os.makedirs(project_dir, exist_ok=True)
-    open(project_file, "w").close()
+    project_dir.mkdir(parents=True, exist_ok=True)
+    project_file.touch()
 
     import_resource(proj, project_file, project_file, 2)
     STATE.project = proj
     proj.save()
-    return {"status": "ok", "project_file": project_file}
+    return {"status": "ok", "project_file": to_stored(project_file)}
 
 
 @router.post("/project/open")
@@ -128,7 +129,7 @@ def open_project(path: str):
     """Open an existing .json project file by path."""
     if STATE.has_project:
         raise HTTPException(400, "B001: A project is already open. Close it first.")
-    if not exists(path):
+    if not require_path(path).is_file():
         raise HTTPException(404, f"File not found: {path}")
     return _do_open(path)
 
@@ -209,7 +210,7 @@ def import_file(path: str):
     """Import a resource file (copy into project dir)."""
     _require_project()
     proj = STATE.project
-    dest = join(proj.project_info.project_dir, basename(path))
+    dest = require_path(proj.project_info.project_dir, "project_dir") / Path(path).name
     try:
         import_resource(proj, path, dest, 0)
         proj.save()
@@ -223,10 +224,9 @@ async def upload_file(file: UploadFile = File(...)):
     """Upload a resource file via multipart."""
     _require_project()
     proj = STATE.project
-    dest = join(proj.project_info.project_dir, file.filename)
+    dest = require_path(proj.project_info.project_dir, "project_dir") / file.filename
     content = await file.read()
-    with open(dest, "wb") as fp:
-        fp.write(content)
+    dest.write_bytes(content)
     try:
         import_resource(proj, None, dest, 0)
         proj.save()
@@ -301,7 +301,7 @@ def parse_one_resource(path: str):
     """Parse a single resource file and return its content + bugs."""
     from backend.file_management.resource_manager import _get_parser_for_type
 
-    ext = splitext(path)[1].lower()
+    ext = require_path(path).suffix.lower()
     if ext == ".json":
         parsed, bugs = parse_project_file(path)
     elif ext == ".tsv":
@@ -449,7 +449,7 @@ def generate_pdf_proof(name: str):
         return {"status": "error", "bugs": {"counts": {"errors": 1, "warnings": 0, "infos": 0}}}
 
     proj = STATE.project
-    pdf_dir = f"{proj.project_info.project_dir}/pdf/"
+    pdf_dir = require_path(proj.project_info.project_dir, "project_dir") / "pdf"
     pdf_path = generate_pdf(proof, pdf_dir)
 
     return {"status": "ok", "pdf_path": pdf_path}
@@ -564,7 +564,7 @@ def _check_nl_proofs(nl_settings: list) -> dict:
             try:
                 chart_fonts, _common_fonts = parse_cfl(cfl_path)
                 available = {r.basename for r in proj.resources.font}
-                available_stems = {splitext(b)[0] for b in available}
+                available_stems = {Path(b).stem for b in available}
                 missing = [
                     fc.font_name
                     for fc in chart_fonts
@@ -602,7 +602,7 @@ def generate_all_pdf():
     _require_project()
 
     proj = STATE.project
-    pdf_dir = f"{proj.project_info.project_dir}/pdf/"
+    pdf_dir = require_path(proj.project_info.project_dir, "project_dir") / "pdf"
     proofs = list(STATE.proofs)
     total = len(proofs)
     STATE.pdf_progress = 0.0
@@ -728,14 +728,13 @@ def generate_non_cjk_pdf(req: NonCjkPdfRequest):
     proj = STATE.project
     _ensure_non_cjk_resources(proj)
 
-    pdf_dir = f"{proj.project_info.project_dir}/pdf/"
-    os.makedirs(pdf_dir, exist_ok=True)
-    safe_name = sanitize_filename(req.block_name)
-    output_path = f"{pdf_dir}{safe_name}.pdf"
+    pdf_dir = require_path(proj.project_info.project_dir, "project_dir") / "pdf"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+    output_path = pdf_dir / f"{sanitize_filename(req.block_name)}.pdf"
 
     # Collect resource paths from parsed data
     nameslist_path, cfl_path, ucd_path = _find_data_paths(proj)
-    font_dir = proj.project_info.project_dir
+    font_dir = require_path(proj.project_info.project_dir, "project_dir")
     combining_cps = _extract_combining_cps(ucd_path)
 
     # Parse NamesList and CFL into objects — non_cjk_generation works with objects
@@ -767,10 +766,10 @@ def generate_non_cjk_pdf(req: NonCjkPdfRequest):
         # Build extra font registrations for block-specific fonts
         extra_fonts = _build_nl_extra_fonts(proj, cfl_path)
         extra_font_dirs = [
-            f"{font_dir}/data/fonts",
-            f"{font_dir}/data",
-            f"{os.path.dirname(os.path.dirname(os.path.dirname(__file__)))}/data/fonts",
-            f"{os.path.dirname(os.path.dirname(os.path.dirname(__file__)))}/data",
+            font_dir / "data" / "fonts",
+            font_dir / "data",
+            PROJECT_ROOT / "data" / "fonts",
+            PROJECT_ROOT / "data",
         ]
 
         pages_data = generate_page_structure(
@@ -860,13 +859,14 @@ def _find_data_paths(proj) -> tuple[str, str, str]:
     return nameslist_path, cfl_path, ucd_path
 
 
-def _extract_combining_cps(ucd_path: str) -> set[int]:
+def _extract_combining_cps(ucd_path: PathLike) -> set[int]:
     """Extract combining-mark codepoints (General Category M*) from a UCD file."""
     cps: set[int] = set()
-    if not ucd_path or not os.path.exists(ucd_path):
+    ucd = as_path(ucd_path)
+    if ucd is None or not ucd.is_file():
         return cps
     try:
-        with open(ucd_path, "r", encoding="utf-8-sig") as f:
+        with ucd.open("r", encoding="utf-8-sig") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#") or line.startswith(";"):
@@ -894,7 +894,7 @@ def _build_nl_extra_fonts(proj, cfl_path: str) -> list[tuple[str, str, str]]:
         return []
 
     available = {r.basename: r.url for r in proj.resources.font}
-    available_stems = {splitext(b)[0]: b for b in available}
+    available_stems = {Path(b).stem: b for b in available}
 
     extra: list[tuple[str, str, str]] = []
     for fc in chart_fonts:
@@ -905,28 +905,22 @@ def _build_nl_extra_fonts(proj, cfl_path: str) -> list[tuple[str, str, str]]:
     return extra
 
 
-def _find_title_md(proj) -> str:
+def _find_title_md(proj) -> Optional[Path]:
     """Locate a title.md template for the non‑CJK title page.
 
     Checks (in order):
       1. ``{project_dir}/title.md``
       2. ``{workspace}/data/title.md``
     """
-    import backend
-
-    project_title = os.path.join(proj.project_info.project_dir, "title.md")
-    if os.path.exists(project_title):
+    project_title = require_path(proj.project_info.project_dir, "project_dir") / "title.md"
+    if project_title.is_file():
         return project_title
 
-    workspace_title = os.path.join(
-        os.path.dirname(os.path.dirname(backend.__file__)),
-        "data",
-        "title.md",
-    )
-    if os.path.exists(workspace_title):
+    workspace_title = PROJECT_ROOT / "data" / "title.md"
+    if workspace_title.is_file():
         return workspace_title
 
-    return ""
+    return None
 
 
 @router.get("/non-cjk/blocks")
@@ -1074,8 +1068,8 @@ def _run_generate_all_non_cjk(proj, targets, total, use_state=True):
     print(f"[non-cjk] generate-all: {total} targets: {[s.name for s in targets]}")
     results = []
     _ensure_non_cjk_resources(proj)
-    pdf_dir = f"{proj.project_info.project_dir}/pdf/"
-    os.makedirs(pdf_dir, exist_ok=True)
+    pdf_dir = require_path(proj.project_info.project_dir, "project_dir") / "pdf"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
 
     # Collect resource paths once (all data is .tsv)
     nameslist_path, cfl_path, ucd_path = _find_data_paths(proj)
@@ -1105,22 +1099,21 @@ def _run_generate_all_non_cjk(proj, targets, total, use_state=True):
         print(f"[non-cjk] Missing data: NL={bool(nameslist_path)} FT={bool(cfl_path)}")
         return results
 
-    font_dir = proj.project_info.project_dir
+    font_dir = require_path(proj.project_info.project_dir, "project_dir")
     extra_fonts = _build_nl_extra_fonts(proj, cfl_path)
     title_md = _find_title_md(proj)
     extra_font_dirs = [
-        f"{font_dir}/data/fonts",
-        f"{font_dir}/data",
-        f"{os.path.dirname(os.path.dirname(os.path.dirname(__file__)))}/data/fonts",
-        f"{os.path.dirname(os.path.dirname(os.path.dirname(__file__)))}/data",
+        font_dir / "data" / "fonts",
+        font_dir / "data",
+        PROJECT_ROOT / "data" / "fonts",
+        PROJECT_ROOT / "data",
     ]
 
     from backend.non_cjk_generation.layout import generate_page_structure
     from backend.non_cjk_generation.renderer import render_pdf
 
     for i, setting in enumerate(targets):
-        safe_name = sanitize_filename(setting.name)
-        output_path = f"{pdf_dir}{safe_name}.pdf"
+        output_path = pdf_dir / f"{sanitize_filename(setting.name)}.pdf"
 
         try:
             char_count = setting.end_cp - setting.start_cp + 1
@@ -1185,17 +1178,15 @@ def _run_generate_all_non_cjk(proj, targets, total, use_state=True):
 @router.post("/utils/resolve-folder")
 def resolve_folder(name: str = Body(..., embed=True)):
     """Resolve a folder name to an absolute path on the server."""
-    return {"path": abspath(name)}
+    return {"path": to_str(Path(name).resolve())}
 
 
 @router.post("/utils/list-dirs")
 def list_dirs(path: str = Body(..., embed=True)):
     """List subdirectories under *path*. Returns parent and child dirs."""
-    import os
-
+    target = Path(path).resolve()
     try:
-        dirs = sorted(e.name for e in os.scandir(path) if e.is_dir() and not e.name.startswith("."))
+        dirs = sorted(p.name for p in target.iterdir() if p.is_dir() and not p.name.startswith("."))
     except (PermissionError, FileNotFoundError, NotADirectoryError):
         dirs = []
-    parent = os.path.dirname(os.path.abspath(path))
-    return {"current": os.path.abspath(path), "parent": parent, "dirs": dirs}
+    return {"current": to_str(target), "parent": to_str(target.parent), "dirs": dirs}
