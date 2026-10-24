@@ -34,8 +34,13 @@ _BLOCK_LEFT, _BLOCK_RIGHT = 82.80, 529.20
 _BLOCK_UP, _BLOCK_DOWN = 76.74, 733.08
 _FORMAT_SHIFT = 15.96
 _NONIVD_RS_GAP = 7
+_RS_PART_GAP = 1.2  # space between the radical glyph and its value
 _IVD_BLOCK_GAP = 243
 
+# Non-IVD column x positions: codepoint / source reference (both centred on
+# these values) and the left edge of the glyph box.  A 40-cell page has six
+# glyph columns -- C, C, C, J, K, V -- whose groups the header row is
+# centred over.
 _NONIVD_X = [101.96, 137.96, 127.96]
 _IVD_X = [90, 142.40, 132]
 _NONIVD_Y = [116, 98, 108, 106]
@@ -62,7 +67,6 @@ _PAGE_LAYOUT: dict[int, tuple[int, float, float, float]] = {
     100: (1, 0, 31.8, 54),
 }
 
-_TITLE_X_40 = [101.96, 166.66, 226.34, 257.52, 287.49, 325.16, 389.86, 449.54, 480.72, 510.69]
 _TITLE_Y = 90.24
 
 
@@ -145,11 +149,15 @@ def _collect_fonts(pages: list[CjkPageData]) -> set[tuple[str, str]]:
 # -- fpdf2 drawing helpers -------------------------------------------
 
 
-def _put_text(pdf: FPDF, x: float, y: float, text: str, font_name: str, size: float) -> None:
-    """Place left-aligned text at (x, y) in fpdf2 top‑left coordinates."""
+def _put_text(pdf: FPDF, x: float, y: float, text: str, font_name: str, size: float, anchor: str = "start") -> None:
+    """Place text at (x, y) in fpdf2 top‑left coordinates; ``x`` follows ``anchor``."""
     if not text:
         return
     use_font(pdf, font_name, size)
+    if anchor == "middle":
+        x -= pdf.get_string_width(text) / 2
+    elif anchor == "end":
+        x -= pdf.get_string_width(text)
     pdf.set_text_color(0, 0, 0)
     pdf.text(x, y, text)
 
@@ -215,7 +223,7 @@ def _render_page(pdf: FPDF, page: Page) -> None:
         text = span.text
         if not text or text == " ":
             continue
-        _put_text(pdf, span.origin[0], span.origin[1], text, span.font, span.size)
+        _put_text(pdf, span.origin[0], span.origin[1], text, span.font, span.size, span.anchor)
 
 
 # -- Title page ------------------------------------------------------
@@ -253,10 +261,23 @@ def _add_grid_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx: Cj
         page.drawings.append(Drawing.line(x1, _BLOCK_UP, x2, _BLOCK_UP, 1.0))
         page.drawings.append(Drawing.line(x1, _BLOCK_DOWN, x2, _BLOCK_DOWN, 1.0))
         if lay.char_count == 40:
-            tx = _shift(_TITLE_X_40, ctx.page_type)
             page.drawings.append(Drawing.line(x1, _TITLE_Y, x2, _TITLE_Y, 1.0))
+            # Each label sits over the column it names: HEX over the codepoint
+            # column, C/J/K/V over the middle column of their group of the
+            # six glyph columns (C, C, C, J, K, V).
+            nx = _shift(_NONIVD_X, ctx.page_type)
+            head_x = [nx[0]] + [nx[1] + g * lay.glyph_gap for g in (1, 3, 4, 5)]
             for j, lab in enumerate(["HEX", "C", "J", "K", "V"]):
-                page.text_spans.append(TextSpan.make(lab, "LiberationSans-Regular", 11, tx[5 * i + j], 86.88))
+                page.text_spans.append(
+                    TextSpan.make(
+                        lab,
+                        "LiberationSans-Regular",
+                        11,
+                        head_x[j] + i * lay.cell_width,
+                        86.88,
+                        anchor="middle",
+                    )
+                )
 
 
 def _add_header_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx: CjkPageContext) -> None:
@@ -311,16 +332,30 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                         10,
                         nx[0] + bi * cw,
                         ny[1] + li * lay.row_gy,
+                        anchor="middle",
                     )
                 )
                 for ri, rs_val in enumerate(data.rs_values[idx]):
                     rs_text = show_rs(rs_val)
+                    rs_y = ny[2] + li * lay.row_gy + ri * _NONIVD_RS_GAP
                     if rs_text and "\u3000" in rs_text:
+                        # Radical glyph (CJKRadicals) + value (Narrow), centred
+                        # on the codepoint column as a single unit.
                         radical, number = rs_text.split("\u3000", 1)
-                        rx = nx[0] + bi * cw
-                        ry = ny[2] + li * lay.row_gy + ri * _NONIVD_RS_GAP
-                        page.text_spans.append(TextSpan.make(radical, CJKRadicals, 6, rx, ry))
-                        page.text_spans.append(TextSpan.make(number, LiberationSansNarrow_Regular, 6, rx + 7, ry))
+                        mid = nx[0] + bi * cw
+                        page.text_spans.append(
+                            TextSpan.make(radical, CJKRadicals, 6, mid - _RS_PART_GAP / 2, rs_y, anchor="end")
+                        )
+                        page.text_spans.append(
+                            TextSpan.make(
+                                number,
+                                LiberationSansNarrow_Regular,
+                                6,
+                                mid + _RS_PART_GAP / 2,
+                                rs_y,
+                                anchor="start",
+                            )
+                        )
                     elif rs_text:
                         page.text_spans.append(
                             TextSpan.make(
@@ -328,7 +363,8 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                                 LiberationSansNarrow_Regular,
                                 6,
                                 nx[0] + bi * cw,
-                                ny[2] + li * lay.row_gy + ri * _NONIVD_RS_GAP,
+                                rs_y,
+                                anchor="middle",
                             )
                         )
             else:
@@ -339,6 +375,7 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                         10,
                         ix[0] + bi * _IVD_BLOCK_GAP,
                         iy[3] + li * lay.ivd_row_gy,
+                        anchor="middle",
                     )
                 )
 
@@ -353,6 +390,7 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                                 6,
                                 ix[1] + si * lay.glyph_gap + bi * _IVD_BLOCK_GAP,
                                 iy[0] + li * lay.ivd_row_gy,
+                                anchor="middle",
                             )
                         )
                     if data.source_labels[gi] != "":
@@ -363,6 +401,7 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                                 6,
                                 ix[1] + si * lay.glyph_gap + bi * _IVD_BLOCK_GAP,
                                 iy[1] + li * lay.ivd_row_gy,
+                                anchor="middle",
                             )
                         )
                         page.text_spans.append(
@@ -372,6 +411,7 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                                 6,
                                 ix[1] + si * lay.glyph_gap + bi * _IVD_BLOCK_GAP,
                                 iy[2] + li * lay.ivd_row_gy,
+                                anchor="middle",
                             )
                         )
                 else:
@@ -382,6 +422,7 @@ def _add_content_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx:
                             6,
                             nx[1] + si * lay.glyph_gap + bi * cw,
                             ny[0] + li * lay.row_gy,
+                            anchor="middle",
                         )
                     )
 
@@ -412,27 +453,31 @@ def _collect_glyph_images(proof: ProofLayout, data: CjkPageData, ctx: CjkPageCon
                 if lookup is None or lookup[0] is None:
                     continue
 
-                svg_path, scale = lookup
+                svg_path, advance, em_height = lookup
                 fix = gd.get(("fix", tuple(data.font_keys[gi])), 0)
 
+                # Keep the em box aspect: a 21pt-wide box is (em/w) tall.
+                ratio = em_height / advance if advance else 1.0
+                height = GS * ratio
                 try:
                     png_data = cairosvg.svg2png(
                         url=to_str(svg_path),
                         output_width=int(GS * 4),
-                        output_height=int(GS * 4),
-                        scale=4,
+                        output_height=max(1, round(GS * 4 * ratio)),
                     )
                 except Exception:
                     continue
 
+                # Anchor the em box by its bottom (baseline-ish), like the
+                # pre-WebUI renderer did, and grow upwards from there.
                 if not is_ivd:
                     x = nx[2] + si * lay.glyph_gap + bi * cw
-                    y = ny[3] + li * lay.row_gy + GS * fix
+                    y_bottom = ny[3] + li * lay.row_gy + GS * fix
                 else:
                     x = ix[2] + si * lay.glyph_gap + bi * _IVD_BLOCK_GAP
-                    y = iy[4] + li * lay.ivd_row_gy + GS * fix
+                    y_bottom = iy[4] + li * lay.ivd_row_gy + GS * fix
 
-                images.append({"x": x, "y": y, "w": GS, "h": GS, "data": png_data})
+                images.append({"x": x, "y": y_bottom - height, "w": GS, "h": height, "data": png_data})
     return images
 
 
@@ -472,8 +517,8 @@ def generate_pdf(
     glyph_dict = build_svg_glyphs(pages_data, svg_dir, progress_callback)
     if isinstance(glyph_dict, tuple):
         raise ParseError(BugEntry(0, "C008", proof.name, f"Font {glyph_dict[0]} missing glyph for {glyph_dict[1]}."))
-    glyph_dict[("", ())] = (None, None)
-    glyph_dict[((), ())] = (None, None)
+    glyph_dict[("", ())] = (None, None, None)
+    glyph_dict[((), ())] = (None, None, None)
     proof.glyph_dict = glyph_dict
 
     # Font directory for registration

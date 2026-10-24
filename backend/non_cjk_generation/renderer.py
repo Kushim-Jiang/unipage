@@ -550,7 +550,12 @@ def render_pdf(
             except Exception:
                 pdf.set_font("LiberationSans", "", size)
             origin = span.get("origin", [bbox[0], bbox[3]])
-            pdf.text(origin[0], origin[1], text)
+            x = origin[0]
+            anchor = span.get("anchor", "start")
+            if anchor != "start":
+                width = pdf.get_string_width(text)
+                x -= width if anchor == "end" else width / 2
+            pdf.text(x, origin[1], text)
 
         pdf.set_text_color(0, 0, 0)
 

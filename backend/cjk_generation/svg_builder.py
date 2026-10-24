@@ -18,8 +18,10 @@ from backend.cjk_generation.layout import CjkPageData
 from backend.pathutil import PathLike, require_path
 
 # Type aliases
-GlyphDict = dict[tuple, tuple[Path, float] | None]
-"""{((cp, font_key) | ("fix", font_key)) -> (svg_path, glyph_width) | fix}."""
+GlyphInfo = tuple[Path, float, float]
+"""(svg_path, advance_width, em_box_height) in font units."""
+GlyphDict = dict[tuple, GlyphInfo | float | None]
+"""{((cp, font_key)) -> GlyphInfo, ("fix", font_key) -> float}."""
 
 
 def _hex_str(val: int) -> str:
@@ -113,7 +115,7 @@ def build_svg_glyphs(
             fpath.write_text(svg, encoding="utf-8")
 
             k = (cp, font_key)
-            result[k] = (fpath, w)
+            result[k] = (fpath, w, h)
 
             processed += 1
             if progress_callback:

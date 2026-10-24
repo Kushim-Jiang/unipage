@@ -52,7 +52,11 @@ def shift_x(x: float, page_type: PageType) -> float:
 
 @dataclass
 class TextSpan:
-    """A single contiguous run of text with uniform formatting."""
+    """A single contiguous run of text with uniform formatting.
+
+    ``anchor`` mirrors SVG's ``text-anchor``: the x of ``origin`` is the
+    start, the middle or the end of the run.
+    """
 
     text: str
     font: str
@@ -60,6 +64,7 @@ class TextSpan:
     color: int = 0
     bbox: list[float] = field(default_factory=lambda: [0, 0, 0, 0])
     origin: list[float] = field(default_factory=lambda: [0, 0])
+    anchor: str = "start"
 
     @classmethod
     def make(
@@ -71,6 +76,7 @@ class TextSpan:
         y: float,
         color: int = 0,
         font_metrics: "FontMetrics | None" = None,
+        anchor: str = "start",
     ) -> "TextSpan":
         """Factory: construct a TextSpan with auto-computed bbox.
 
@@ -85,13 +91,15 @@ class TextSpan:
             from backend.non_cjk_generation.models import measure_text
 
             width = measure_text(font, size, text)
+        left = x - width if anchor == "end" else (x - width / 2 if anchor == "middle" else x)
         return cls(
             text=text,
             font=font,
             size=size,
             color=color,
-            bbox=[x, y - size * 0.8, x + width, y + size * 0.2],
+            bbox=[left, y - size * 0.8, left + width, y + size * 0.2],
             origin=[x, y],
+            anchor=anchor,
         )
 
     def to_dict(self) -> dict:
@@ -102,6 +110,7 @@ class TextSpan:
             "color": self.color,
             "bbox": self.bbox,
             "origin": self.origin,
+            "anchor": self.anchor,
         }
 
 
