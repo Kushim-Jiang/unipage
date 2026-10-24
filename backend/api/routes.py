@@ -14,13 +14,17 @@ from backend.cjk_generation.layout import make_proof
 from backend.cjk_generation.pdf_builder import generate_pdf
 from backend.file_management.parser import detect_tsv_type, parse_project_file
 from backend.file_management.resource_manager import (
+    SOURCE_COUNT,
     build_blocks,
     build_settings,
+    ensure_font_settings,
+    font_candidates,
     import_resource,
     parse_and_update,
     remove_resource,
 )
 from backend.file_management.validator import bug_summary
+from backend.models.dataclasses import BugEntry
 from backend.models.project import Project, sanitize_filename
 from backend.models.state import STATE
 
@@ -140,6 +144,7 @@ def load_project(data: dict):
         proj = Project.from_dict(data)
     except Exception as exc:
         raise HTTPException(422, f"Failed to parse project file: {exc}")
+    ensure_font_settings(proj)
     STATE.project = proj
     return {
         "status": "ok",
@@ -154,6 +159,7 @@ def _do_open(path: str):
     if any(b.severity == 0 for b in bugs):
         STATE.project = None
         return {"status": "error", "bugs": bug_summary(bugs)}
+    ensure_font_settings(proj)
     STATE.project = proj
     return {
         "status": "ok",
@@ -257,14 +263,20 @@ def parse_resources():
 
     def run():
         all_bugs = []
-        for i, rsc in enumerate(targets):
-            bugs = parse_and_update(proj, rsc.url)
-            all_bugs.extend(bugs)
-            STATE.parse_progress = (i + 1) / total * 100
-        # Rebuild blocks and settings
-        build_blocks(proj)
-        build_settings(proj)
-        proj.save()
+        try:
+            for i, rsc in enumerate(targets):
+                bugs = parse_and_update(proj, rsc.url)
+                all_bugs.extend(bugs)
+                STATE.parse_progress = (i + 1) / total * 100
+            # Rebuild blocks and settings
+            build_blocks(proj)
+            build_settings(proj)
+            proj.save()
+        except Exception as exc:
+            import traceback
+
+            traceback.print_exc()
+            all_bugs.append(BugEntry(0, "C000", "parse", f"{type(exc).__name__}: {exc}"))
         STATE.parse_bugs = bug_summary(all_bugs)
         STATE.parse_progress = 100.0
         STATE.parse_done = True
@@ -351,9 +363,41 @@ def cycle_option(req: CycleOptionRequest):
     if req.field in _SETTING_KEYS:
         idx = _SETTING_KEYS.index(req.field)
         cont[req.field] = (cont[req.field] + delta) % _SETTING_RANGES[idx]
+    elif req.field == "font":
+        _cycle_font(proj, setting, req.source_index, delta)
 
     proj.save()
     return {"status": "ok", "setting": setting.to_dict()}
+
+
+def _cycle_font(proj: Project, setting, source_index: Optional[int], delta: int) -> None:
+    """Cycle the font assigned to one source slot of a CJK block."""
+    names = font_candidates(proj)
+    cont = setting.content
+
+    def _next(current) -> str:
+        try:
+            pos = names.index(current)
+        except ValueError:
+            return names[0]
+        return names[(pos + delta) % len(names)]
+
+    if setting.type == "RF-V":
+        slot = cont.get("font")
+        if not isinstance(slot, list) or len(slot) < 2:
+            slot = cont["font"] = [0, names[0]]
+        slot[1] = _next(slot[1])
+        return
+
+    slots = cont.get("font")
+    if not isinstance(slots, list) or len(slots) != SOURCE_COUNT:
+        slots = cont["font"] = [[0, names[0]] for _ in range(SOURCE_COUNT)]
+    if source_index is None or not 0 <= source_index < SOURCE_COUNT:
+        return
+    entry = slots[source_index]
+    if not isinstance(entry, list) or len(entry) < 2:
+        entry = slots[source_index] = [0, names[0]]
+    entry[1] = _next(entry[1])
 
 
 @router.post("/settings/colour-toggle")
@@ -426,28 +470,44 @@ def check_all_proofs():
     STATE.proofs = []
 
     def run():
-        from backend.models.dataclasses import BugEntry
-
         all_bugs: list[BugEntry] = []
         passing: list = []
         processed = 0
 
-        # CJK proofs
-        for setting in cjk_targets:
-            proof, bugs = make_proof(setting.name)
-            all_bugs.extend(bugs)
-            if not any(b.severity == 0 for b in bugs) and proof is not None:
-                passing.append(proof)
-            processed += 1
-            STATE.check_progress = processed / total * 100
+        try:
+            # CJK proofs
+            for setting in cjk_targets:
+                try:
+                    proof, bugs = make_proof(setting.name)
+                except Exception as exc:
+                    import traceback
 
-        # NL proofs
-        nl_results = _check_nl_proofs(nl_targets)
-        all_bugs.extend(nl_results["bugs"])
-        passing.extend(nl_results["proofs"])
-        processed += len(nl_targets)
+                    traceback.print_exc()
+                    proof, bugs = None, [BugEntry(0, "G002", setting.name, f"{type(exc).__name__}: {exc}")]
+                all_bugs.extend(bugs)
+                if not any(b.severity == 0 for b in bugs) and proof is not None:
+                    passing.append(proof)
+                processed += 1
+                STATE.check_progress = processed / total * 100
+
+            # NL proofs
+            try:
+                nl_results = _check_nl_proofs(nl_targets)
+                all_bugs.extend(nl_results["bugs"])
+                passing.extend(nl_results["proofs"])
+            except Exception as exc:
+                import traceback
+
+                traceback.print_exc()
+                all_bugs.append(BugEntry(0, "G002", "non-CJK", f"{type(exc).__name__}: {exc}"))
+            processed += len(nl_targets)
+        except Exception as exc:
+            import traceback
+
+            traceback.print_exc()
+            all_bugs.append(BugEntry(0, "C000", "check", f"{type(exc).__name__}: {exc}"))
+
         STATE.check_progress = 100.0
-
         STATE.proofs = passing
         STATE.check_bugs = bug_summary(all_bugs)
         STATE.check_done = True
@@ -549,27 +609,50 @@ def generate_all_pdf():
     STATE.pdf_results = None
 
     def run():
-        results = []
-        cjk_proofs = [p for p in proofs if not (isinstance(p, dict) and p.get("type") == "NL")]
-        nl_proofs = [p for p in proofs if isinstance(p, dict) and p.get("type") == "NL"]
-        # Generate Non-CJK PDFs using the shared pipeline
-        if nl_proofs:
-            nl_names = {p["name"] for p in nl_proofs}
-            nl_targets = [
-                s for s in proj.settings if s.type == "NL" and s.content.get("print") == 1 and s.name in nl_names
-            ]
-            if nl_targets:
-                nl_results = _run_generate_all_non_cjk(proj, nl_targets, len(nl_targets), use_state=False)
-                results.extend(nl_results)
-        # Generate CJK PDFs
-        for i, proof in enumerate(cjk_proofs):
+        results: list[dict] = []
+        try:
+            cjk_proofs = [p for p in proofs if not (isinstance(p, dict) and p.get("type") == "NL")]
+            nl_proofs = [p for p in proofs if isinstance(p, dict) and p.get("type") == "NL"]
+            # Generate Non-CJK PDFs using the shared pipeline
+            if nl_proofs:
+                nl_names = {p["name"] for p in nl_proofs}
+                nl_targets = [
+                    s for s in proj.settings if s.type == "NL" and s.content.get("print") == 1 and s.name in nl_names
+                ]
+                if nl_targets:
+                    nl_results = _run_generate_all_non_cjk(proj, nl_targets, len(nl_targets), use_state=False)
+                    results.extend(nl_results)
+            # Generate CJK PDFs
+            for i, proof in enumerate(cjk_proofs):
 
-            def cb(p: float):
-                STATE.pdf_progress = (i + p) / total * 100
+                def cb(p: float, _i: int = i):
+                    STATE.pdf_progress = (_i + p) / total * 100
 
-            pdf_path = generate_pdf(proof, pdf_dir, progress_callback=cb)
-            results.append({"block": proof.name, "pdf_path": pdf_path})
-            STATE.pdf_progress = (i + 1) / total * 100
+                try:
+                    pdf_path = generate_pdf(proof, pdf_dir, progress_callback=cb)
+                    results.append({"block": proof.name, "pdf_path": pdf_path, "status": "ok"})
+                except Exception as exc:
+                    import traceback
+
+                    tb = traceback.format_exc()
+                    traceback.print_exc()
+                    results.append(
+                        {
+                            "block": proof.name,
+                            "pdf_path": "",
+                            "status": "error",
+                            "error": str(exc),
+                            "code": "G003",
+                            "traceback": tb,
+                        }
+                    )
+                STATE.pdf_progress = (i + 1) / total * 100
+        except Exception as exc:
+            import traceback
+
+            tb = traceback.format_exc()
+            traceback.print_exc()
+            results.append({"block": "FATAL", "status": "error", "error": str(exc), "code": "G003", "traceback": tb})
         STATE.pdf_results = results
         STATE.pdf_progress = 100.0
 

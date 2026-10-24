@@ -25,21 +25,23 @@ def _hex_str(val: int) -> str:
     return hex(val).upper().replace("0X", "")
 
 
-def _resolve_glyph_name(cp: Any, font: ttLib.TTFont, font_cmap: dict) -> tuple[str, str]:
-    """Resolve a codepoint/int/tuple to (display_label, glyph_name)."""
+def _resolve_glyph_name(cp: Any, font: ttLib.TTFont, font_cmap: dict) -> tuple[str, Optional[str]]:
+    """Resolve a codepoint/int/tuple to (display_label, glyph_name).
+
+    ``glyph_name`` is ``None`` when the font has no glyph for *cp*; the
+    caller reports that against the returned label.
+    """
     if isinstance(cp, int):
-        label = f"\u2039{cp} ({_hex_str(cp)})\u203a"
-        glyph_name = font_cmap[cp]
-    elif isinstance(cp, (list, tuple)):
+        return f"\u2039{cp} ({_hex_str(cp)})\u203a", font_cmap.get(cp)
+    if isinstance(cp, (list, tuple)):
         cp_int, sel = int(cp[0]), int(cp[1])
         label = f"\u2039{sel} ({_hex_str(sel)}), {cp_int} ({_hex_str(cp_int)})\u203a"
         uvs_table = font["cmap"].getcmap(0, 5)
+        if uvs_table is None:
+            return label, font_cmap.get(sel)
         pair = [t for t in uvs_table.uvsDict.get(cp_int, []) if t[0] == sel]
-        glyph_name = pair[0][1] if pair else font_cmap.get(sel, ".notdef")
-    else:
-        label = str(cp)
-        glyph_name = font_cmap.get(int(cp), ".notdef")
-    return label, glyph_name
+        return label, pair[0][1] if pair else font_cmap.get(sel)
+    return str(cp), font_cmap.get(int(cp))
 
 
 def build_svg_glyphs(
@@ -71,52 +73,50 @@ def build_svg_glyphs(
     result: GlyphDict = {}
     processed = 0
 
-    for font_key in set(item[1] for item in glyph_set if item not in (("", ()), ((), ()))):
-        cps = [item[0] for item in glyph_set if item[1] == font_key]
+    for font_key in sorted(
+        set(item[1] for item in glyph_set if item not in (("", ()), ((), ()))), key=str
+    ):
+        cps = sorted((item[0] for item in glyph_set if item[1] == font_key), key=str)
         widths: list[float] = []
 
-        try:
-            font = ttLib.TTFont(font_key[1])
-            font_cmap = font.getBestCmap()
-            font_gs = font.getGlyphSet()
-            bp = boundsPen.BoundsPen(font_gs)
+        font = ttLib.TTFont(font_key[1])
+        font_cmap = font.getBestCmap()
+        font_gs = font.getGlyphSet()
+        bp = boundsPen.BoundsPen(font_gs)
 
-            for cp in cps:
-                label, glyph_name = _resolve_glyph_name(cp, font, font_cmap)
-                glyph = font_gs[glyph_name]
-                pen = svgPathPen.SVGPathPen(font_gs)
-                glyph.draw(pen)
-                glyph.draw(bp)
+        for cp in cps:
+            label, glyph_name = _resolve_glyph_name(cp, font, font_cmap)
+            if glyph_name is None:
+                return (basename(font_key[1]), label)
+            glyph = font_gs[glyph_name]
+            pen = svgPathPen.SVGPathPen(font_gs)
+            glyph.draw(pen)
+            glyph.draw(bp)
 
-                asc = font["OS/2"].sTypoAscender
-                desc = font["OS/2"].sTypoDescender
-                w = glyph.width
-                widths.append(w)
-                h = asc - desc
+            asc = font["OS/2"].sTypoAscender
+            desc = font["OS/2"].sTypoDescender
+            w = glyph.width
+            widths.append(w)
+            h = asc - desc
 
-                svg = dedent(f"""\
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {-asc} {w} {h}">
-                        <g transform="scale(1, -1)">
-                            <path d="{pen.getCommands()}"/>
-                        </g>
-                    </svg>
-                """)
-                fname = f"{_sub(r'\.', '_', basename(font_key[1]))}" f"_{_sub(r'\.', '_', glyph_name)}.svg"
-                fpath = f"{svg_dir}{fname}"
-                with open(fpath, "w") as fp:
-                    fp.write(svg)
+            svg = dedent(f"""\
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 {-asc} {w} {h}">
+                    <g transform="scale(1, -1)">
+                        <path d="{pen.getCommands()}"/>
+                    </g>
+                </svg>
+            """)
+            fname = f"{_sub(r'\.', '_', basename(font_key[1]))}" f"_{_sub(r'\.', '_', glyph_name)}.svg"
+            fpath = f"{svg_dir}{fname}"
+            with open(fpath, "w") as fp:
+                fp.write(svg)
 
-                k = (cp, font_key)
-                result[k] = (fpath, w)
+            k = (cp, font_key)
+            result[k] = (fpath, w)
 
-                processed += 1
-                if progress_callback:
-                    progress_callback(processed / total)
-
-        except (KeyError, AttributeError):
-            return (font_key[0], label)
-        except FileNotFoundError:
-            raise
+            processed += 1
+            if progress_callback:
+                progress_callback(processed / total)
 
         if widths:
             fix = (bp.bounds[3] - bp.bounds[1]) / 2 / mean(widths) - 0.25

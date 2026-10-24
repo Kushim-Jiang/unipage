@@ -5,6 +5,8 @@
   const formatLabels = ['Right', 'Left', 'Center'];
   const columnLabels = ['2 cols, 6 glyphs/col', '3 cols, 3 glyphs/col', '4 cols, 2 glyphs/col', '5 cols, 1 glyph/col'];
   const yesNo = ['No', 'Yes'];
+  /** IRG source slots of an RF-H / RF-W block, in layout order. */
+  const sourceNames = ['G', 'H', 'M', 'T', 'K', 'KP', 'J', 'V', 'GS', 'UK', 'UTC', 'SAT'];
 
   /** Record of selected item keys: "settingName:field:sourceIndex" -> true */
   let selected: Record<string, boolean> = {};
@@ -104,6 +106,11 @@
   }
 
   function isNL(setting: any): boolean { return setting.type === 'NL'; }
+
+  /** Font name currently assigned to a source slot ("(none)" when unset). */
+  function fontName(setting: any, idx: number): string {
+    return setting.content.font?.[idx]?.[1] ?? '(none)';
+  }
 </script>
 
 <div class="settings-panel">
@@ -150,6 +157,32 @@
               <button on:click|stopPropagation={() => cycle(setting, field, true)}>&#9655;</button>
             </div>
           {/each}
+          <details class="sub">
+            <summary>{setting.type === 'RF-V' ? 'Font' : `Fonts (${sourceNames.length} sources)`}</summary>
+            {#if setting.type === 'RF-V'}
+              <div class="field" class:sel={selMap[selKey(setting, 'font')]} data-selkey={selKey(setting, 'font')}
+                   on:click={(e) => toggleSelect(e, setting, 'font')}
+                   on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,'font',false); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,'font',true); } }}
+                   role="option" aria-selected={!!selMap[selKey(setting, 'font')]} tabindex="0">
+                <span class="label">IVD</span>
+                <button on:click|stopPropagation={() => cycle(setting, 'font', false)}>&#9665;</button>
+                <span class="value">{fontName(setting, 1)}</span>
+                <button on:click|stopPropagation={() => cycle(setting, 'font', true)}>&#9655;</button>
+              </div>
+            {:else}
+              {#each sourceNames as src, idx}
+                <div class="field" class:sel={selMap[selKey(setting, 'font', idx)]} data-selkey={selKey(setting, 'font', idx)}
+                     on:click={(e) => toggleSelect(e, setting, 'font', idx)}
+                     on:keydown={(e) => { if (e.key==='ArrowLeft') { e.preventDefault(); cycle(setting,'font',false,idx); } else if (e.key==='ArrowRight') { e.preventDefault(); cycle(setting,'font',true,idx); } }}
+                     role="option" aria-selected={!!selMap[selKey(setting, 'font', idx)]} tabindex="0">
+                  <span class="label">{src}</span>
+                  <button on:click|stopPropagation={() => cycle(setting, 'font', false, idx)}>&#9665;</button>
+                  <span class="value">{fontName(setting, idx)}</span>
+                  <button on:click|stopPropagation={() => cycle(setting, 'font', true, idx)}>&#9655;</button>
+                </div>
+              {/each}
+            {/if}
+          </details>
         {/if}
       </div>
     </details>
@@ -169,4 +202,7 @@
   .field button:hover { background: #ecf0f1; }
   .page-input { flex: 1; text-align: center; border: 1px solid #bdc3c7; border-radius: 4px; padding: 0.1rem 0.3rem; font-size: 0.85rem; color: #2c3e50; background: #fff; min-width: 0; }
   .page-input:focus { outline: none; border-color: #3498db; }
+  details.sub { margin: 0.3rem 0 0; }
+  details.sub > summary { background: transparent; font-weight: normal; padding: 0.1rem 0.2rem; }
+  details.sub .field { padding-left: 0.6rem; }
 </style>

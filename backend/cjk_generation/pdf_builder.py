@@ -136,8 +136,9 @@ def _collect_fonts(pages: list[CjkPageData]) -> set[tuple[str, str]]:
     fonts: set[tuple[str, str]] = set()
     for page in pages:
         for f in page.font_keys:
-            fonts.add(f)
-    fonts.discard(("", ""))
+            # Unused glyph slots hold "" rather than a (name, path) pair.
+            if isinstance(f, tuple) and len(f) == 2 and f[0] and f[1]:
+                fonts.add(f)
     return fonts
 
 

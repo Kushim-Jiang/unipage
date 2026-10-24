@@ -6,6 +6,7 @@ the operations that were previously spread across ``tools.py``.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from os.path import splitext
 from typing import Optional
 
@@ -332,6 +333,23 @@ def build_blocks(project: Project) -> list[BlockInfo]:
     return project.blocks
 
 
+def _iter_attribute_sections(parsed_data):
+    """Yield attribute section dicts from any ``parse_data`` shape.
+
+    Unified data resources hold ``{"blocks": [...], "attributes": [...]}``;
+    a single-file parse may be a bare ``list`` of sections, and a section
+    itself may already be a ``{"inf_cont": ...}`` dict.
+    """
+    if isinstance(parsed_data, list):
+        for item in parsed_data:
+            yield from _iter_attribute_sections(item)
+    elif isinstance(parsed_data, dict):
+        if isinstance(parsed_data.get("inf_cont"), dict):
+            yield parsed_data
+        for section in parsed_data.get("attributes") or []:
+            yield from _iter_attribute_sections(section)
+
+
 def _merge_block_data(parsed: BlockInfo, project: Project) -> BlockInfo:
     """Merge parsed block data with RS info from data files."""
     bt = parsed.type
@@ -379,10 +397,8 @@ def _merge_hw_cont(result: BlockInfo, parsed: BlockInfo, init_cp: int, fina_cp: 
     for att_entry in project.resources.data:
         if att_entry.check_status != COMPILED_OK:
             continue
-        for section in att_entry.parse_data or []:
-            if not isinstance(section, dict):
-                continue
-            for key, val in section.get("inf_cont", {}).items():
+        for section in _iter_attribute_sections(att_entry.parse_data):
+            for key, val in section["inf_cont"].items():
                 try:
                     cp_int = int(key)
                 except (ValueError, TypeError):
@@ -409,8 +425,21 @@ def _merge_v_cont(result: BlockInfo, parsed: BlockInfo) -> None:
 # -- Settings building -----------------------------------------------
 
 
+NONE_FONT = "(none)"
+"""Font name meaning "no font assigned" -- layout reports a C007 bug for it."""
+
+SOURCE_COUNT = 12
+"""Number of IRG source slots in RF-H / RF-W blocks."""
+
+
+def font_candidates(project: Project) -> list[str]:
+    """Font names selectable per source: project fonts, then ``(none)``."""
+    return [f.basename for f in project.resources.font] + [NONE_FONT]
+
+
 def default_setting(blk_type: str, font_names: list[str]) -> dict:
     """Create a default settings dict for a block type."""
+    default_font = font_names[0] if font_names else NONE_FONT
     defaults = {
         "print": 1,
         "column": 0,
@@ -420,25 +449,52 @@ def default_setting(blk_type: str, font_names: list[str]) -> dict:
     }
     if blk_type in ("RF-H", "RF-W"):
         defaults["format"] = 0
+        # One [index, font name] slot per IRG source, as consumed by layout.
+        defaults["font"] = [[0, default_font] for _ in range(SOURCE_COUNT)]
     elif blk_type == "RF-V":
         defaults["format"] = 2
+        defaults["font"] = [0, default_font]
     return defaults
 
 
+def ensure_font_settings(project: Project) -> None:
+    """Fill in missing per-source font defaults for already-loaded settings.
+
+    Projects saved by builds without the font feature have CJK settings whose
+    ``content`` lacks ``"font"``; layout needs the key to exist.
+    """
+    font_names = [f.basename for f in project.resources.font]
+    for setting in project.settings:
+        if setting.type not in ("RF-H", "RF-W", "RF-V"):
+            continue
+        if "font" in setting.content:
+            continue
+        setting.content["font"] = default_setting(setting.type, font_names)["font"]
+
+
 def build_settings(project: Project) -> list[BlockSetting]:
-    """Build ``settings`` from ``blocks`` with defaults (both CJK and non-CJK)."""
+    """Build ``settings`` from ``blocks`` with defaults (both CJK and non-CJK).
+
+    Existing per-source font assignments survive a rebuild (e.g. re-parsing
+    resources) as long as the block name and type are unchanged.
+    """
     settings: list[BlockSetting] = []
     font_names = [f.basename for f in project.resources.font]
+    previous = {s.name: s for s in project.settings}
 
     for blk in project.blocks:
         if blk.type == "NL":
             continue  # handled by build_non_cjk_settings
+        content = default_setting(blk.type, font_names)
+        prev = previous.get(blk.name)
+        if prev is not None and prev.type == blk.type and isinstance(prev.content.get("font"), list):
+            content["font"] = deepcopy(prev.content["font"])
         setting = BlockSetting(
             name=blk.name,
             type=blk.type,
             start_cp=blk.start_cp,
             end_cp=blk.end_cp,
-            content=default_setting(blk.type, font_names),
+            content=content,
         )
         settings.append(setting)
 
