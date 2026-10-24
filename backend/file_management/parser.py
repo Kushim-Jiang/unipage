@@ -138,8 +138,8 @@ def _handle_exc(exc: Exception, url: str, line: str = "") -> BugEntry:
 
 
 def _read_lines(path: str):
-    """Yield stripped non-empty lines from a UTF-8 file until ``# EOF``."""
-    with open(path, "r", encoding="utf-8") as fp:
+    """Yield stripped non-empty lines until ``# EOF`` (UTF-8, BOM tolerated)."""
+    with open(path, "r", encoding="utf-8-sig") as fp:
         for raw in fp:
             line = raw.strip()
             if line.lower() == "# eof":
@@ -164,7 +164,7 @@ def detect_tsv_type(path: str) -> str:
     or ``'unknown'``.
     """
     try:
-        with open(path, "r", encoding="utf-8") as fp:
+        with open(path, "r", encoding="utf-8-sig") as fp:
             for raw in fp:
                 line = raw.strip()
                 if line and line[0] == "#":
@@ -188,7 +188,7 @@ def parse_project_file(path: str) -> tuple[dict | list, list[BugEntry]]:
     """Parse a ``.json`` (project) file."""
     bugs: list[BugEntry] = []
     try:
-        with open(path, "r", encoding="utf-8") as fp:
+        with open(path, "r", encoding="utf-8-sig") as fp:
             content = load(fp)
     except JSONDecodeError as exc:
         content = {}

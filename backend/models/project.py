@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from json import dumps
-from os import makedirs
-from os.path import basename, exists, join, splitext
+from os import makedirs, remove as os_remove, replace as os_replace
+from os.path import abspath, basename, exists, join, normcase, splitext
 from re import sub as _sub
 from typing import Optional
 
@@ -129,7 +129,6 @@ class Project:
         parse_data: Optional[list] = None,
     ) -> str:
         """Register a resource. Returns the resource key ('project','font','data')."""
-        from os import remove as os_remove
         from shutil import copyfile
 
         ext = splitext(dest_path)[1].lower()
@@ -140,10 +139,16 @@ class Project:
         if dest_path in self.all_resource_paths():
             raise FileExistsError(f"Resource already exists: {dest_path}")
 
-        if src_path and src_path != dest_path:
-            if exists(dest_path):
-                os_remove(dest_path)
-            copyfile(src_path, dest_path)
+        if src_path and normcase(abspath(src_path)) != normcase(abspath(dest_path)):
+            # Copy through a temporary file so an interrupted copy cannot
+            # destroy an already-present destination.
+            tmp_path = f"{dest_path}.importing"
+            try:
+                copyfile(src_path, tmp_path)
+                os_replace(tmp_path, dest_path)
+            finally:
+                if exists(tmp_path):
+                    os_remove(tmp_path)
 
         entry = ResourceEntry(basename(dest_path), check_status, dest_path, parse_data)
         getattr(self.resources, rsc_key).append(entry)

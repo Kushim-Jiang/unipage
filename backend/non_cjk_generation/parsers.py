@@ -19,7 +19,7 @@ def detect_block_from_nameslist(filepath: str) -> tuple[str, int, int]:
 
     Returns (block_name, start_cp, end_cp).  Returns ("", 0, 0) if not found.
     """
-    with open(filepath, "r", encoding="utf-8") as fp:
+    with open(filepath, "r", encoding="utf-8-sig") as fp:
         for line in fp:
             m = _RE_BLOCK_HEADER.match(line.rstrip("\r\n"))
             if m:
@@ -41,7 +41,7 @@ def split_data_tsv(filepath: str) -> tuple[str, str]:
     Returns two strings ready to be passed to ``parse_nameslist`` and
     ``parse_cfl`` respectively.
     """
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         content = f.read()
 
     # Split on section headers: # ...; NL  and  # ...; FT
@@ -81,7 +81,7 @@ def parse_cfl(filepath: str) -> tuple[list[FontConfig], list[FontConfig]]:
     common_fonts: list[FontConfig] = []
     in_common = False
 
-    with open(filepath, "r", encoding="utf-8") as fp:
+    with open(filepath, "r", encoding="utf-8-sig") as fp:
         for line in fp:
             line = line.strip()
             if not line or line.startswith(";"):
@@ -243,7 +243,7 @@ _RE_VARIATION_PARTS = re.compile(r"^([0-9A-F]{4,6}) (ALT[1-9]|[0-9A-F]{4,6}) (.+
 
 def parse_nameslist(filepath: str) -> list[NamesListEntry]:
     """Parse a Unicode NamesList.txt file per the NamesList Format spec."""
-    with open(filepath, "r", encoding="utf-8") as fp:
+    with open(filepath, "r", encoding="utf-8-sig") as fp:
         lines = [raw.rstrip("\r\n") for raw in fp]
     return parse_nameslist_from_lines(lines)
 

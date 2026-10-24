@@ -19,6 +19,8 @@ _BUG_LABELS: dict[str, str] = {
     "C010": "Resource import collision -- path already registered.",
     "C011": "Unsupported resource extension.",
     "C012": "TSV type detection failed -- header missing or unrecognised.",
+    "C013": "No data sections found in TSV file.",
+    "C014": "Unknown TSV section type.",
     # -- J: Unicode / Encoding ------------------------------------
     "J001": "Block range start mod 16 is not 0, violating Unicode Standard Conformance D10b.",
     "J002": "Block range end mod 16 is not 15, violating Unicode Standard Conformance D10b.",

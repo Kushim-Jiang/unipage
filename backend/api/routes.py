@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import threading
-from os.path import abspath, basename, exists, splitext
+from os.path import abspath, basename, exists, join, splitext
 from typing import Optional
 
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile
@@ -209,7 +209,7 @@ def import_file(path: str):
     """Import a resource file (copy into project dir)."""
     _require_project()
     proj = STATE.project
-    dest = f"{proj.project_info.project_dir}/{basename(path)}"
+    dest = join(proj.project_info.project_dir, basename(path))
     try:
         import_resource(proj, path, dest, 0)
         proj.save()
@@ -223,7 +223,7 @@ async def upload_file(file: UploadFile = File(...)):
     """Upload a resource file via multipart."""
     _require_project()
     proj = STATE.project
-    dest = f"{proj.project_info.project_dir}/{file.filename}"
+    dest = join(proj.project_info.project_dir, file.filename)
     content = await file.read()
     with open(dest, "wb") as fp:
         fp.write(content)
@@ -866,7 +866,7 @@ def _extract_combining_cps(ucd_path: str) -> set[int]:
     if not ucd_path or not os.path.exists(ucd_path):
         return cps
     try:
-        with open(ucd_path, "r", encoding="utf-8") as f:
+        with open(ucd_path, "r", encoding="utf-8-sig") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#") or line.startswith(";"):

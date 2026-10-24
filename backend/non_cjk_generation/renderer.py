@@ -267,7 +267,7 @@ class ReservedCellHatcher:
         assigned = set()
         ucd = Path(self.ucd_path)
         if ucd.exists():
-            with open(ucd, "r", encoding="utf-8") as f:
+            with open(ucd, "r", encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
                     if not line or not line[0].isalnum():

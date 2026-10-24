@@ -142,7 +142,7 @@ def _parse_title_md(filepath: str, ctx: LayoutContext, cfg: TitlePageConfig, fm=
     """
     from backend.non_cjk_generation.models import wrap_text
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         content = f.read()
 
     # Substitute placeholders

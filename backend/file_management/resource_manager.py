@@ -181,7 +181,7 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
     current_lines: list[str] = []
 
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8-sig") as f:
             for raw in f:
                 line = raw.rstrip("\r\n")
                 if not line.strip():
@@ -211,12 +211,13 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
         return result, bugs
 
     if not sections:
-        bugs.append(BugEntry(1, "C013", path, "No data sections found in TSV file"))
+        bugs.append(BugEntry(0, "C013", path, "No data sections found in TSV file"))
         return result, bugs
 
     # -- Parse each section ------------------------------------
     block_list: list = []
     attr_list: list = []
+    parsed_sections = 0
 
     for header, lines in sections:
         type_code = _header_type(header)
@@ -243,6 +244,7 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
             bugs.extend(sec_bugs)
 
             if parsed is not None:
+                parsed_sections += 1
                 if type_code in ("RF-W", "RF-H", "RF-V"):
                     if isinstance(parsed, list):
                         block_list.extend(parsed)
@@ -266,6 +268,12 @@ def parse_data_tsv(path: str) -> tuple[dict, list]:
                 pass
 
     # -- Assemble result ---------------------------------------
+    if not parsed_sections:
+        # Every section was skipped (unknown type, or header-only) -- an
+        # empty parse must not be reported as a successful compile.
+        bugs.append(BugEntry(0, "C013", path, "No data sections found in TSV file"))
+        return result, bugs
+
     if block_list:
         result["blocks"] = [b.to_dict() if isinstance(b, BlockInfo) else b for b in block_list]
     if attr_list:
@@ -611,7 +619,7 @@ def parse_ucd_file(path: str) -> tuple[Optional[dict], list]:
         total = 0
         assigned = 0
         categories: dict[str, int] = {}
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8-sig") as f:
             for line in f:
                 parts = line.strip().split(";")
                 if len(parts) >= 2:
