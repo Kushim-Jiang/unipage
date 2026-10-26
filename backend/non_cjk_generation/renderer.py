@@ -51,6 +51,7 @@ def register_fonts(
     system_font_dir: PathLike = "",
     extra_fonts: list[tuple[str, str, str]] | None = None,
     extra_font_dirs: list[PathLike] | None = None,
+    styles: set[tuple[str, str]] | None = None,
 ):
     """Register all required fonts with fpdf2.
 
@@ -66,6 +67,10 @@ def register_fonts(
     extra_font_dirs: Optional list of additional directories to search
         for font files (checked after *font_dir*, before *system_font_dir*).
         Use this when block-specific fonts live alongside block data.
+    styles: Optional set of (family, style) pairs to register.  Every
+        registered font is embedded in the PDF whether it is used or not, so
+        callers that know exactly which fonts they draw should pass them.
+        *extra_fonts* are always registered.
     """
     import sys
 
@@ -87,12 +92,15 @@ def register_fonts(
         ("CJKRadicals-Light", "", "CJKRadicals-Light.ttf"),
     ]
 
+    if styles is not None:
+        font_registry = [entry for entry in font_registry if (entry[0], entry[1]) in styles]
     if extra_fonts:
         font_registry.extend(extra_fonts)
 
     font_base = Path(font_dir)
     extra_bases = [Path(d) for d in extra_font_dirs] if extra_font_dirs else []
     sys_base = as_path(system_font_dir)
+    registered = 0
 
     for family, style, filename in font_registry:
         path = font_base / filename
@@ -107,12 +115,13 @@ def register_fonts(
         if path.exists():
             try:
                 pdf.add_font(family, style, str(path))
+                registered += 1
             except Exception as e:
                 print(f"  Warning: {filename} ({style}) - {e}", file=sys.stderr)
         else:
             print(f"  Warning: font file not found: {filename}", file=sys.stderr)
 
-    print(f"  Registered {len(font_registry)} fonts")
+    print(f"  Registered {registered} of {len(font_registry)} requested fonts")
 
 
 # ==================================================================->

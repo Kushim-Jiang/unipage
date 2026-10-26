@@ -16,7 +16,12 @@ from typing import Optional
 import cairosvg
 from fpdf import FPDF
 
-from backend.cjk_generation.fonts import CJKRadicals, LiberationSansNarrow_Regular, use_font
+from backend.cjk_generation.fonts import (
+    FONT_MAP,
+    CJKRadicals,
+    LiberationSansNarrow_Regular,
+    use_font,
+)
 from backend.cjk_generation.layout import CjkPageData
 from backend.cjk_generation.svg_builder import build_svg_glyphs
 from backend.file_management.parser import ParseError, show_rs
@@ -24,6 +29,9 @@ from backend.models.dataclasses import ProofLayout
 from backend.pathutil import PROJECT_ROOT, PathLike, require_path, to_str
 from backend.non_cjk_generation.models import Drawing, Page, TextSpan
 from backend.non_cjk_generation.renderer import register_fonts
+
+# (family, style) that ``use_font`` falls back to for an unknown font name.
+_FALLBACK_FONT = ("LiberationSans", "")
 
 # -- Constants -------------------------------------------------------
 
@@ -233,14 +241,13 @@ def _render_page(pdf: FPDF, page: Page) -> None:
 # -- Title page ------------------------------------------------------
 
 
-def _draw_title_page(
-    pdf: FPDF,
+def _build_title_page(
     proof: ProofLayout,
     title_md_path: Optional[PathLike] = None,
     version: str = "17.0",
     year: str = "2025",
-) -> None:
-    """Draw a title page using the non‑CJK ``compute_title_page`` path."""
+) -> Page:
+    """Build a title page using the non‑CJK ``compute_title_page`` path."""
     from backend.non_cjk_generation.layout import compute_title_page
     from backend.non_cjk_generation.models import BlockInfo, LayoutContext, TitlePageConfig
 
@@ -251,8 +258,7 @@ def _draw_title_page(
         year=year,
         block=block,
     )
-    title_page = compute_title_page(ctx, title_md_path, cfg=TitlePageConfig())
-    _render_page(pdf, title_page)
+    return compute_title_page(ctx, title_md_path, cfg=TitlePageConfig())
 
 
 # -- Chart page layout builders (populate Page objects) --------------
@@ -547,28 +553,13 @@ def generate_pdf(
     font_set = _collect_fonts(pages_data)
     extra_fonts = [(f[0], "", Path(f[1]).name) for f in font_set if f[1]]
 
-    # -- Create PDF ----------------------------------------------
-    pdf = FPDF(unit="pt", format="letter")
-    pdf.set_auto_page_break(False)
-    register_fonts(
-        pdf,
-        font_dir,
-        extra_fonts=extra_fonts,
-        extra_font_dirs=[
-            font_dir / "data" / "fonts",
-            font_dir / "data",
-            PROJECT_ROOT / "data" / "fonts",
-            PROJECT_ROOT / "data",
-        ],
-    )
+    # -- Lay out every page first --------------------------------
+    # The page objects are cheap to build, and knowing which fonts their spans
+    # use lets us register only those: fpdf2 embeds every registered font,
+    # used or not.
+    title_page = _build_title_page(proof, title_md_path, version=version, year=year) if proof.page_title else None
 
-    # -- Title page ----------------------------------------------
-    if proof.page_title:
-        pdf.add_page()
-        _draw_title_page(pdf, proof, title_md_path, version=version, year=year)
-
-    # -- Chart pages ---------------------------------------------
-    print(f"Rendering {page_count} pages...")
+    chart_pages: list[tuple[Page, list[dict]]] = []
     for pg_idx, data in enumerate(pages_data):
         pt = proof.page_class[pg_idx % 2]
         bx = _shift(
@@ -589,8 +580,35 @@ def generate_pdf(
         _add_footer_to_page(page, pg_idx, ctx, version=version, year=year)
         _add_content_to_page(page, proof, data, ctx)
 
-        images = _collect_glyph_images(proof, data, ctx)
+        chart_pages.append((page, _collect_glyph_images(proof, data, ctx)))
 
+    # -- Create PDF ----------------------------------------------
+    pages = ([title_page] if title_page else []) + [page for page, _ in chart_pages]
+    used_styles = {FONT_MAP.get(span.font, _FALLBACK_FONT) for page in pages for span in page.text_spans}
+    used_styles.add(_FALLBACK_FONT)
+
+    pdf = FPDF(unit="pt", format="letter")
+    pdf.set_auto_page_break(False)
+    register_fonts(
+        pdf,
+        font_dir,
+        extra_fonts=extra_fonts,
+        extra_font_dirs=[
+            font_dir / "data" / "fonts",
+            font_dir / "data",
+            PROJECT_ROOT / "data" / "fonts",
+            PROJECT_ROOT / "data",
+        ],
+        styles=used_styles,
+    )
+
+    if title_page:
+        pdf.add_page()
+        _render_page(pdf, title_page)
+
+    # -- Chart pages ---------------------------------------------
+    print(f"Rendering {page_count} pages...")
+    for pg_idx, (page, images) in enumerate(chart_pages):
         pdf.add_page()
         _render_page(pdf, page)
 
