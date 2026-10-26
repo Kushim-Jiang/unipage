@@ -37,6 +37,10 @@ _NONIVD_RS_GAP = 7
 _RS_PART_GAP = 1.2  # space between the radical glyph and its value
 _IVD_BLOCK_GAP = 243
 
+# Share of the reported progress taken by glyph rasterisation; the chart pages
+# are laid out and written afterwards.
+_PROGRESS_GLYPH_SHARE = 0.6
+
 # Non-IVD column x positions: codepoint / source reference (both centred on
 # these values) and the left edge of the glyph box.  A 40-cell page has six
 # glyph columns -- C, C, C, J, K, V -- whose groups the header row is
@@ -513,6 +517,16 @@ def generate_pdf(
 
     # Convert raw pages → typed pages (compat with ProofLayout.print_pages: list)
     pages_data = [CjkPageData.from_raw(p) for p in proof.print_pages]
+    page_count = len(pages_data)
+
+    def report(fraction: float) -> None:
+        if progress_callback:
+            progress_callback(max(0.0, min(1.0, fraction)))
+
+    def _glyph_progress(fraction: float) -> None:
+        # Rasterising the glyphs is only the first part of the run; the pages
+        # still have to be laid out and written.
+        report(fraction * _PROGRESS_GLYPH_SHARE)
 
     # Build SVG glyphs
     from backend.models.state import STATE
@@ -521,7 +535,7 @@ def generate_pdf(
     svg_dir = require_path(proj.project_info.project_dir, "project_dir") / "svg" if proj else out_dir / "svg"
     svg_dir.mkdir(parents=True, exist_ok=True)
 
-    glyph_dict = build_svg_glyphs(pages_data, svg_dir, progress_callback)
+    glyph_dict = build_svg_glyphs(pages_data, svg_dir, _glyph_progress)
     if isinstance(glyph_dict, tuple):
         raise ParseError(BugEntry(0, "C008", proof.name, f"Font {glyph_dict[0]} missing glyph for {glyph_dict[1]}."))
     glyph_dict[("", ())] = (None, None, None)
@@ -554,6 +568,7 @@ def generate_pdf(
         _draw_title_page(pdf, proof, title_md_path, version=version, year=year)
 
     # -- Chart pages ---------------------------------------------
+    print(f"Rendering {page_count} pages...")
     for pg_idx, data in enumerate(pages_data):
         pt = proof.page_class[pg_idx % 2]
         bx = _shift(
@@ -586,8 +601,11 @@ def generate_pdf(
             except Exception:
                 pass
 
+        report(_PROGRESS_GLYPH_SHARE + (pg_idx + 1) / page_count * (1.0 - _PROGRESS_GLYPH_SHARE))
+
     # -- Output --------------------------------------------------
     pdf.output(to_str(pdf_path))
+    report(1.0)
     print(f"Saved: {pdf_path} ({pdf_path.stat().st_size:,} bytes)")
     print("Done!")
 

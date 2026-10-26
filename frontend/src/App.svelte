@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { projectOpen, projectInfo, resources, blocks, settings, bugs, resetAllStores } from './stores/project';
+  import { projectOpen, projectInfo, resources, blocks, settings, bugs, proofs, resetAllStores } from './stores/project';
   import * as api from './lib/api';
   import ProjectManager from './lib/components/ProjectManager.svelte';
   import ResourceTree from './lib/components/ResourceTree.svelte';
@@ -62,13 +62,30 @@
     };
   }
 
-  onMount(async () => {
-    try {
-      const status = await api.getProjectStatus();
-      if (status.open) await loadProjectData();
-    } catch (e: any) {
-      console.warn('Backend not available:', e.message);
-    }
+  /**
+   * Proofs are computed from the parsed resources and the settings, so any
+   * change to them makes the previous "Check Proofs" run stale: the button
+   * goes back to its unchecked state and "Generate PDF" cannot silently reuse
+   * outdated results.
+   */
+  function invalidateProofs() {
+    proofsPassed = false;
+    proofs.set([]);
+  }
+
+  onMount(() => {
+    const unsubscribers = [resources, blocks, settings].map((store) =>
+      store.subscribe(() => invalidateProofs())
+    );
+    (async () => {
+      try {
+        const status = await api.getProjectStatus();
+        if (status.open) await loadProjectData();
+      } catch (e: any) {
+        console.warn('Backend not available:', e.message);
+      }
+    })();
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
   });
 
   async function loadProjectData() {

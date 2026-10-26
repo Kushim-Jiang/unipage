@@ -109,6 +109,9 @@
 
   /** Font name currently assigned to a source slot ("(none)" when unset). */
   function fontName(setting: any, idx: number): string {
+    // RF-V stores a single flat slot ([offset, name]); RF-H/RF-W store one
+    // [offset, name] pair per source.
+    if (setting.type === 'RF-V') return setting.content.font?.[1] ?? '(none)';
     return setting.content.font?.[idx]?.[1] ?? '(none)';
   }
 </script>
