@@ -1410,7 +1410,7 @@ def generate_page_structure(
     nameslist_path: str = "",
     data_tsv_path: str = "",
     block_name: str = "",
-    start_cp: int = 0,
+    start_cp: int | None = None,
     end_cp: int = 0,
     version: str = "17.0.0",
     short_version: str = "17.0",
@@ -1480,7 +1480,7 @@ def generate_page_structure(
             block_name, start_cp, end_cp = detect_block_from_nameslist(nameslist_path)
         if not block_name:
             raise ValueError("Cannot detect block info; pass block_name/start_cp/end_cp explicitly")
-    elif not start_cp:
+    elif start_cp is None:
         raise ValueError("start_cp is required when block_name is provided")
 
     # Auto-detect column count

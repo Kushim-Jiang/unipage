@@ -533,7 +533,12 @@ def generate_pdf(
         pdf,
         font_dir,
         extra_fonts=extra_fonts,
-        extra_font_dirs=[font_dir / "data" / "fonts", PROJECT_ROOT / "data" / "fonts"],
+        extra_font_dirs=[
+            font_dir / "data" / "fonts",
+            font_dir / "data",
+            PROJECT_ROOT / "data" / "fonts",
+            PROJECT_ROOT / "data",
+        ],
     )
 
     # -- Title page ----------------------------------------------

@@ -643,6 +643,8 @@ def parse_ucd_file(path: PathLike) -> tuple[Optional[dict], list]:
         with require_path(path).open("r", encoding="utf-8-sig") as f:
             for line in f:
                 parts = line.strip().split(";")
+                if parts[0].startswith("#"):
+                    continue
                 if len(parts) >= 2:
                     total += 1
                     cat = parts[2] if len(parts) >= 3 else "?"

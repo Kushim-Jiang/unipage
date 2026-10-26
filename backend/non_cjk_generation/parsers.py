@@ -100,9 +100,9 @@ def parse_cfl(filepath: PathLike) -> tuple[list[FontConfig], list[FontConfig]]:
                 continue
             font_name = m.group(1).strip()
             font_size = float(m.group(2))
+            # A bare "name,size" line declares a font without arguments; it
+            # then covers everything no earlier line claimed (default range).
             rest = m.group(4).strip()
-            if not rest:
-                continue
 
             config = FontConfig(font_name=font_name, size=font_size)
 
