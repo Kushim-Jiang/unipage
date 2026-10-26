@@ -450,7 +450,7 @@ def generate_pdf_proof(name: str):
 
     proj = STATE.project
     pdf_dir = require_path(proj.project_info.project_dir, "project_dir") / "pdf"
-    pdf_path = generate_pdf(proof, pdf_dir)
+    pdf_path = generate_pdf(proof, pdf_dir, title_md_path=_find_title_md(proj))
 
     return {"status": "ok", "pdf_path": pdf_path}
 
@@ -629,7 +629,9 @@ def generate_all_pdf():
                     STATE.pdf_progress = (_i + p) / total * 100
 
                 try:
-                    pdf_path = generate_pdf(proof, pdf_dir, progress_callback=cb)
+                    pdf_path = generate_pdf(
+                        proof, pdf_dir, progress_callback=cb, title_md_path=_find_title_md(proj)
+                    )
                     results.append({"block": proof.name, "pdf_path": pdf_path, "status": "ok"})
                 except Exception as exc:
                     import traceback

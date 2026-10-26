@@ -749,6 +749,7 @@ FONT_ANNO = ("LiberationSans-Italic", 9.0)
 FONT_BULLET = ("LiberationSerif-Regular", 10.0)
 FONT_BULLET_TEXT = ("LiberationSans-Regular", 9.0)
 FONT_SECTION = ("LiberationSans-Bold", 9.0)
+FONT_NOTICE = ("LiberationSans-Italic", 8.0)
 FONT_RESERVED = ("LiberationSans-Regular", 9.0)
 FONT_ARROW = ("LiberationSerif-Regular", 9.0)
 FONT_INFO_DOLLAR = ("SpecialsUC6", 10.0)
@@ -883,7 +884,8 @@ class InfoPageBuilder:
                 if txt.startswith("Also known as") or txt.startswith("The aliases"):
                     entries.append({"type": "block_anno", "text": txt})
                     continue
-                entries.append({"type": "section", "text": txt})
+                # "@+" text is an italic note, not a bold subheader.
+                entries.append({"type": "notice" if nl.type == "notice" else "section", "text": txt})
                 continue
             if nl.type == "name":
                 try:
@@ -1061,6 +1063,10 @@ class InfoPageBuilder:
                         bbox=[cx, y - 7.5, cx + 300, y + 1.5],
                     )
                 )
+            elif t == "notice":
+                y += 3.4
+                self._info_wrap(page, e["text"], FONT_NOTICE, nx, y, mw, fm=fm)
+                extra = self._info_extra(e["text"], FONT_NOTICE, mw, fm=fm)
             elif t == "reserved":
                 cp_display = self._display_cp_str(e["codepoint"])
                 page.text_spans.append(
@@ -1166,6 +1172,8 @@ class InfoPageBuilder:
             if t == "block_anno":
                 y += cfg.gap_after_blockanno + extra * cfg.line_h
             elif t == "section":
+                y += cfg.gap_after_section + extra * cfg.line_h
+            elif t == "notice":
                 y += cfg.gap_after_section + extra * cfg.line_h
             else:
                 y += cfg.gap_after_regular * (1 + extra)

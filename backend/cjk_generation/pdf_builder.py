@@ -229,7 +229,13 @@ def _render_page(pdf: FPDF, page: Page) -> None:
 # -- Title page ------------------------------------------------------
 
 
-def _draw_title_page(pdf: FPDF, proof: ProofLayout, version: str = "17.0", year: str = "2025") -> None:
+def _draw_title_page(
+    pdf: FPDF,
+    proof: ProofLayout,
+    title_md_path: Optional[PathLike] = None,
+    version: str = "17.0",
+    year: str = "2025",
+) -> None:
     """Draw a title page using the non‑CJK ``compute_title_page`` path."""
     from backend.non_cjk_generation.layout import compute_title_page
     from backend.non_cjk_generation.models import BlockInfo, LayoutContext, TitlePageConfig
@@ -241,7 +247,7 @@ def _draw_title_page(pdf: FPDF, proof: ProofLayout, version: str = "17.0", year:
         year=year,
         block=block,
     )
-    title_page = compute_title_page(ctx, cfg=TitlePageConfig())
+    title_page = compute_title_page(ctx, title_md_path, cfg=TitlePageConfig())
     _render_page(pdf, title_page)
 
 
@@ -287,10 +293,10 @@ def _add_header_to_page(page: Page, proof: ProofLayout, data: CjkPageData, ctx: 
     page.text_spans.append(TextSpan.make(data.min_cp, "OpenSans-Bold", 11, hx[0], _HEAD_Y))
     page.drawings.append(Drawing.rect(hx[0], _HEAD_RECT_Y, 24.48, _HEAD_RECT_H))
 
-    page.text_spans.append(TextSpan.make(proof.name, "OpenSans-Bold", 11, hx[1], _HEAD_Y))
+    page.text_spans.append(TextSpan.make(proof.name, "OpenSans-Bold", 11, hx[1], _HEAD_Y, anchor="middle"))
     page.drawings.append(Drawing.rect(hx[1] - 80, _HEAD_RECT_Y, 160, _HEAD_RECT_H))
 
-    page.text_spans.append(TextSpan.make(data.max_cp, "OpenSans-Bold", 11, hx[2], _HEAD_Y))
+    page.text_spans.append(TextSpan.make(data.max_cp, "OpenSans-Bold", 11, hx[2], _HEAD_Y, anchor="end"))
     page.drawings.append(Drawing.rect(hx[2] - 40, _HEAD_RECT_Y, 40, _HEAD_RECT_H))
 
 
@@ -307,7 +313,7 @@ def _add_footer_to_page(
     page.text_spans.append(TextSpan.make(copyright_text, "OpenSans-Italic", 9, fx[0], _FOOTER_Y))
     page.drawings.append(Drawing.rect(fx[0], _FOOTER_RECT_Y, _FOOTER_COPY_W, _FOOTER_RECT_H))
 
-    page.text_spans.append(TextSpan.make(page_text, "LiberationSans-Regular", 9, fx[1], _FOOTER_Y))
+    page.text_spans.append(TextSpan.make(page_text, "LiberationSans-Regular", 9, fx[1], _FOOTER_Y, anchor="end"))
     page.drawings.append(Drawing.rect(fx[1] - 60, _FOOTER_RECT_Y, 60, _FOOTER_RECT_H))
 
 
@@ -492,6 +498,7 @@ def generate_pdf(
     progress_callback: Optional[callable] = None,
     version: str = "17.0",
     year: str = "2025",
+    title_md_path: Optional[PathLike] = None,
 ) -> str:
     """Generate a PDF file from a ProofLayout using fpdf2."""
     from backend.models.dataclasses import BugEntry
@@ -544,7 +551,7 @@ def generate_pdf(
     # -- Title page ----------------------------------------------
     if proof.page_title:
         pdf.add_page()
-        _draw_title_page(pdf, proof, version=version, year=year)
+        _draw_title_page(pdf, proof, title_md_path, version=version, year=year)
 
     # -- Chart pages ---------------------------------------------
     for pg_idx, data in enumerate(pages_data):
