@@ -367,15 +367,50 @@ def _merge_block_data(parsed: BlockInfo, project: Project) -> BlockInfo:
         _merge_hw_cont(result, parsed, init_cp, fina_cp, project)
     elif bt == "RF-V":
         _merge_v_cont(result, parsed)
-    elif bt == "RS-W":
-        # RS blocks: simple content copy
-        result.content = dict(parsed.content)
 
     return result
 
 
+def _rs_value_pairs(section: dict, expected_type: str, init_cp: int, fina_cp: int):
+    """Yield ``(codepoint, values)`` from one RS section.
+
+    ``RS-H`` keys are absolute codepoints; ``RS-W`` keys are 1-based sequence
+    numbers of the block, so they need the block start to resolve.  Sections
+    written before the type was recorded carry no ``type``: try absolute
+    codepoints first and fall back to sequence numbers when nothing lands in
+    the block.
+    """
+    cont = section.get("inf_cont")
+    if not isinstance(cont, dict):
+        return
+    sec_type = section.get("type")
+    if sec_type is not None and sec_type != expected_type:
+        return
+
+    numbered = []
+    for key in cont:
+        try:
+            numbered.append((int(key), key))
+        except (TypeError, ValueError):
+            continue
+    if not numbered:
+        return
+
+    if sec_type is None:
+        absolute = [(n, k) for n, k in numbered if init_cp <= n <= fina_cp]
+        seq_mode = not absolute
+    else:
+        seq_mode = sec_type == "RS-W"
+
+    for n, key in numbered:
+        cp = init_cp + n - 1 if seq_mode else n
+        if init_cp <= cp <= fina_cp:
+            yield str(cp), cont[key]
+
+
 def _merge_hw_cont(result: BlockInfo, parsed: BlockInfo, init_cp: int, fina_cp: int, project: Project) -> None:
     """Merge H/W block content with 12-slot source arrays and RS info."""
+    expected_rs = "RS-H" if result.type == "RF-H" else "RS-W"
     # Initialise all slots
     for cp in range(init_cp, fina_cp + 1):
         result.content[str(cp)] = [None, [None] * 12]
@@ -397,14 +432,9 @@ def _merge_hw_cont(result: BlockInfo, parsed: BlockInfo, init_cp: int, fina_cp: 
         if att_entry.check_status != COMPILED_OK:
             continue
         for section in _iter_attribute_sections(att_entry.parse_data):
-            for key, val in section["inf_cont"].items():
-                try:
-                    cp_int = int(key)
-                except (ValueError, TypeError):
-                    continue
-                if init_cp <= cp_int <= fina_cp:
-                    if key in result.content:
-                        result.content[key][0] = val
+            for cp_s, val in _rs_value_pairs(section, expected_rs, init_cp, fina_cp):
+                if cp_s in result.content:
+                    result.content[cp_s][0] = val
 
 
 def _merge_v_cont(result: BlockInfo, parsed: BlockInfo) -> None:

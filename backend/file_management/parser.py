@@ -327,14 +327,15 @@ def _parse_block_v_line(cont: dict, line: str, *args) -> int | None:
 # ==================================================================
 
 
-_RS_PATTERN = _compile(r"[1-9][0-9]{0,2}['\"]?\.-?[0-9]{1,2}")
+_RS_PATTERN = _compile(r"[1-9][0-9]{0,2}'{0,3}\.-?[0-9]{1,2}")
 
 
 def parse_attribute_file(path: PathLike) -> tuple[list[dict], list[BugEntry]]:
     """Parse a ``.tsv`` attribute file.
 
-    Returns (contents, bugs).  Each content dict has key ``inf_cont``
-    which is either a dict (RS-H/RS-W) or a list (NL).
+    Returns (contents, bugs).  Each content dict holds ``type`` (the section
+    type, e.g. ``RS-H``) and ``inf_cont``, which is either a dict (RS-H/RS-W)
+    or a list (NL).
     """
     contents: list[dict] = []
     bugs: list[BugEntry] = []
@@ -353,7 +354,7 @@ def parse_attribute_file(path: PathLike) -> tuple[list[dict], list[BugEntry]]:
                 # Finalize previous section
                 if section_name:
                     inf_cont = _finalise_section(inf_type, set_cont, lst_cont)
-                    contents.append(deepcopy({"inf_cont": inf_cont}))
+                    contents.append(deepcopy({"type": inf_type, "inf_cont": inf_cont}))
                     set_cont, lst_cont = {}, []
 
                 # #range;name;type
@@ -369,7 +370,7 @@ def parse_attribute_file(path: PathLike) -> tuple[list[dict], list[BugEntry]]:
 
         if section_name:
             inf_cont = _finalise_section(inf_type, set_cont, lst_cont)
-            contents.append(deepcopy({"inf_cont": inf_cont}))
+            contents.append(deepcopy({"type": inf_type, "inf_cont": inf_cont}))
 
     except Exception as exc:
         bugs.append(_handle_exc(exc, path))
